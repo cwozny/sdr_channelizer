@@ -9,7 +9,7 @@
 #include <iostream>
 #include <fstream>
 
-const std::uint32_t sampleLength = 250000;
+const std::uint32_t sampleLength = 2500000;
 const std::uint32_t bufferSize = 2*sampleLength;
 
 struct IqPacket
@@ -221,6 +221,8 @@ int main(int argc, char *argv[])
 	{
 		std::cout << "Failed to disable RX: " << bladerf_strerror(status) << std::endl;
 	}
+	
+	delete[] iq;
 
 	return status;
 }
