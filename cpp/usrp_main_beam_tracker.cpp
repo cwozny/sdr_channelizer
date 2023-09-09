@@ -168,6 +168,10 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 	std::vector<std::complex<float>> iq_vec;
 	iq_vec.resize(sampleLength, 0);
 	std::complex<float>* iq = iq_vec.data();
+	std::vector<float> mag;
+	mag.resize(sampleLength, 0);
+	std::vector<float> phase;
+	phase.resize(sampleLength, 0);
 
 	const std::chrono::system_clock::time_point startTime = std::chrono::system_clock::now();
 	std::chrono::system_clock::time_point currentTime;
@@ -241,19 +245,29 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 
 			//saturated = (((*minSamp) <= SAMP_MIN) || ((*maxSamp) >= SAMP_MAX));
 
+			for(std::uint32_t jj = 0; jj < num_accum_samps; jj++)
+			{
+				mag[jj] = std::abs(iq[jj]);
+				phase[jj] = std::arg(iq[jj]);
+			}
+
+			std::sort(std::execution::par_unseq, mag.begin(), mag.end());
+
 			// Compute the noise floor as the median of the magnitude of the I/Q data
-			float NOISE_FLOOR = 0.1; // TODO: median(mag)
-			float SNR_THRESHOLD = 12; // dB
+			const float NOISE_FLOOR = mag[mag.size()/2]; // compute the median by picking the middle element of sorted vector
+			const float SNR_THRESHOLD = 12; // dB
+
+			std::cout << "Noise floor = " << NOISE_FLOOR << std::endl;
 
 			// Compute the magnitude threshold to declare a pulse
-			float PULSE_THRESHOLD = NOISE_FLOOR * pow(10,SNR_THRESHOLD/1);
+			const float PULSE_THRESHOLD = NOISE_FLOOR * pow(10,SNR_THRESHOLD/1);
 
 			bool pulseActive = false; // keeps track of whether pulse is active
 			bool pulseSaturated = false; // keeps track of whether pulse was ever saturated
 			std::uint32_t toa = 0; // this is sufficient as long as we don't ever record more than ~35 seconds of samples at 60 Msps in one buffer
 
 			// Loop through I/Q and generate PDWs
-			for(int jj = 0; jj < num_accum_samps; jj++)
+			for(std::uint32_t jj = 0; jj < num_accum_samps; jj++)
 			{
 				// Look for a leading edge
 				if (pulseActive == false)
@@ -306,17 +320,17 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 					}
 					else // Otherwise we're still measuring a pulse
 					{
-						if (abs(iq[jj].real()) >= SAMP_MAX || abs(iq[jj].imag()) >= SAMP_MAX)
+						if (std::abs(iq[jj].real()) >= SAMP_MAX || std::abs(iq[jj].imag()) >= SAMP_MAX)
 						{
 							pulseSaturated = true;
 						}
 					}
 				}
 			}
-			
+
 			// Now that we've generated the PDWs, let's go through and see if a
 			// main beam event occurred
-			
+
 			// p = polyfit(pdw.toa,pdw.snr,2);
 			// t1 = min(pdw.toa):0.001:max(pdw.toa);
 			// y1 = polyval(p,t1);
