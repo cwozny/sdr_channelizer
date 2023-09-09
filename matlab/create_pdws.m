@@ -68,7 +68,10 @@ for ii = 1:length(listing)
                     pdw.snr = [pdw.snr; 10*log10((amp/pw)/nf)];
                     pdw.pw = [pdw.pw; pw/fs];
                     pdw.saturated = [pdw.saturated; saturated];
-                    pdw.freq = [pdw.freq; 0];
+
+                    medPhaseDiff = median(diff(phase(toa:jj)));
+
+                    pdw.freq = [pdw.freq; fc+(fs/(360/medPhaseDiff))];
                 else % Otherwise we're still measuring a pulse
                     pw = pw + 1;
                     amp = amp + mag(jj);
