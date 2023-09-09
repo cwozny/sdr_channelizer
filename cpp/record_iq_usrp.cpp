@@ -121,17 +121,17 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 
 	usrp->set_time_now(uhd::time_spec_t(timeInSecs));
 
-	// Compute the requested number of samples and buffer size
-
-	const std::uint32_t sampleLength = dwellDuration*receivedSampleRate;
-	const std::uint32_t bufferSize = 2*sampleLength + 5440; // need to reserve some extra space for some reason, TODO: this should be understood and fixed
-
 	// Set up the configuration parameters necessary to receive samples with the device
 
 	// create a receive streamer
 	uhd::stream_args_t stream_args("sc16","sc12"); // 16-bit integers on host, 12-bit over-the-wire
 	uhd::rx_streamer::sptr rx_stream = usrp->get_rx_stream(stream_args);
 	const std::uint32_t maxSampsPerBuffer = rx_stream->get_max_num_samps();
+
+	// Compute the requested number of samples and buffer size
+
+	const std::uint32_t sampleLength = dwellDuration*receivedSampleRate;
+	const std::uint32_t bufferSize = 2*ceil(sampleLength/float(maxSampsPerBuffer))*maxSampsPerBuffer;
 
 	// setup streaming
 	uhd::stream_cmd_t stream_cmd(uhd::stream_cmd_t::STREAM_MODE_STOP_CONTINUOUS);
