@@ -126,15 +126,15 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 
 	// Set up the configuration parameters necessary to receive samples with the device
 
-    // create a receive streamer
-    uhd::stream_args_t stream_args("sc16","sc16"); // 16-bit integers
-    uhd::rx_streamer::sptr rx_stream = usrp->get_rx_stream(stream_args);
+	// create a receive streamer
+	uhd::stream_args_t stream_args("sc16","sc16"); // 16-bit integers
+	uhd::rx_streamer::sptr rx_stream = usrp->get_rx_stream(stream_args);
 
-    // setup streaming
-    uhd::stream_cmd_t stream_cmd(uhd::stream_cmd_t::STREAM_MODE_NUM_SAMPS_AND_DONE);
-    stream_cmd.num_samps  = sampleLength;
-    stream_cmd.stream_now = true;
-    rx_stream->issue_stream_cmd(stream_cmd);
+	// setup streaming
+	uhd::stream_cmd_t stream_cmd(uhd::stream_cmd_t::STREAM_MODE_START_CONTINUOUS);
+	stream_cmd.num_samps  = sampleLength;
+	stream_cmd.stream_now = true;
+	rx_stream->issue_stream_cmd(stream_cmd);
 
 	// Specify the endianness of the recording
 
@@ -185,38 +185,55 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 		memset(iq, 0, bufferSize*sizeof(std::int16_t));
 
 		memset(&meta, 0, sizeof(meta));
-		size_t num_rx_samps = rx_stream->recv(&iq_vec.front(), iq_vec.size(), meta, 5.0, true);
+		size_t num_acc_samps = 0;
 
-		if (meta.error_code == uhd::rx_metadata_t::ERROR_CODE_OVERFLOW)
+		do
 		{
-			std::cout << "Overrun detected in scheduled RX. " << num_rx_samps << " valid samples were read." << std::endl;
-			overrunCounter++;
-		}
-		else if (meta.error_code != uhd::rx_metadata_t::ERROR_CODE_NONE)
-		{
-			std::cout << "Scheduled RX failed: " << meta.strerror() << std::endl;
-		}
-		else
-		{
-			// Look for instances of saturating to max positive value
-			std::vector<std::int16_t>::iterator maxVal = std::find(std::execution::par_unseq, std::begin(iq_vec), std::end(iq_vec), INT12_MAX);
-			// Look for instances of saturating to max negative value
-			std::vector<std::int16_t>::iterator minVal = std::find(std::execution::par_unseq, std::begin(iq_vec), std::end(iq_vec), INT12_MIN);
+			size_t num_rx_samps = rx_stream->recv(&iq_vec.front(), iq_vec.size(), meta, 5.0, true);
 
-			saturated = (maxVal != std::end(iq_vec)) || (minVal != std::end(iq_vec));
+			num_acc_samps += num_rx_samps;
+
+			// Handle streaming error codes
+			switch (meta.error_code)
+			{
+				// No errors
+				case uhd::rx_metadata_t::ERROR_CODE_NONE:
+					//std::cout << "Accumulated " << num_acc_samps << "/" << sampleLength << " samples." << std::endl;
+					break;
+
+				case uhd::rx_metadata_t::ERROR_CODE_TIMEOUT: // I get this error on the expected last iteration of the while loop
+					if (num_acc_samps == 0)
+					{
+						continue;
+					}
+					std::cout << "ERROR_CODE_TIMEOUT: Got timeout before all samples received" << std::endl;
+					break;
+
+				case uhd::rx_metadata_t::ERROR_CODE_OVERFLOW:
+					overrunCounter++;
+					break;
+
+				default:
+					std::cout << "Got error code: " << meta.strerror() << std::endl;
+			}
 		}
+		while(num_acc_samps < iq_vec.size());
 
-		stream_cmd.stream_mode = uhd::stream_cmd_t::STREAM_MODE_STOP_CONTINUOUS;
-		rx_stream->issue_stream_cmd(stream_cmd);
+		// Look for instances of saturating to max positive value
+		std::vector<std::int16_t>::iterator maxVal = std::find(std::execution::par_unseq, std::begin(iq_vec), std::end(iq_vec), INT12_MAX);
+		// Look for instances of saturating to max negative value
+		std::vector<std::int16_t>::iterator minVal = std::find(std::execution::par_unseq, std::begin(iq_vec), std::end(iq_vec), INT12_MIN);
 
-		packet.numSamples = num_rx_samps;
+		saturated = (maxVal != std::end(iq_vec)) || (minVal != std::end(iq_vec));
+
+		packet.numSamples = num_acc_samps;
 		packet.sampleStartTime = 0;
 
 		getFilenameStr(filenameStr);
 
 		std::ofstream fout(filenameStr);
 		fout.write((char*)&packet, sizeof(packet));
-		fout.write((char*)iq, 2*num_rx_samps*sizeof(std::int16_t));
+		fout.write((char*)iq, 2*num_acc_samps*sizeof(std::int16_t));
 		fout.close();
 
 		currentTime = std::chrono::system_clock::now();
