@@ -109,6 +109,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 	usrp->set_rx_agc(false);
 
 	std::cout << "Disabled automatic gain control" << std::endl;
+
 	// Set gain of the device
 
 	usrp->set_rx_gain(rxGain);
