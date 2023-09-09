@@ -12,11 +12,15 @@
 struct IqPacket
 {
 	std::uint32_t endianness;
+	std::uint32_t linkSpeed;
 	std::uint32_t frequencyHz;
 	std::uint32_t bandwidthHz;
 	std::uint32_t sampleRate;
 	std::uint32_t rxGain;
 	std::uint32_t numSamples;
+	std::uint32_t spare1;
+	char fpgaVersion[32];
+	char fwVersion[32];
 	std::uint64_t timestamp;
 };
 
@@ -27,6 +31,7 @@ int main(int argc, char *argv[])
 	bladerf_devinfo dev_info;
 	bladerf_metadata meta;
 	bladerf_channel channel = BLADERF_CHANNEL_RX(0);
+	struct bladerf_version version;
 	IqPacket packet;
 	char datetimeStr[80];
 	char filenameStr[80];
@@ -50,6 +55,33 @@ int main(int argc, char *argv[])
 		std::cout << "Unable to open device: " << bladerf_strerror(status) << std::endl;
 		return 1;
 	}
+	
+	packet.linkSpeed = bladerf_device_speed(dev);
+	
+	if ( packet.linkSpeed == BLADERF_DEVICE_SPEED_SUPER )
+	{
+		std::cout << "Negotiated USB 3 link speed" << std::endl;
+	}
+	else if ( packet.linkSpeed == BLADERF_DEVICE_SPEED_HIGH )
+	{
+		std::cout << "Negotiated USB 2 link speed" << std::endl;
+	}
+	else
+	{
+		std::cout << "Negotiated unknown link speed" << std::endl;
+	}
+
+	bladerf_fpga_version(dev, &version);
+
+	strncpy(packet.fpgaVersion, version.describe, sizeof(packet.fpgaVersion));
+
+	std::cout << "FPGA version: " << packet.fpgaVersion << std::endl;
+
+	bladerf_fw_version(dev, &version);
+
+	strncpy(packet.fwVersion, version.describe, sizeof(packet.fwVersion));
+
+	std::cout << "Firmware version: " << packet.fwVersion << std::endl;
 
 	status = bladerf_set_frequency(dev, channel, frequencyHz);
 
