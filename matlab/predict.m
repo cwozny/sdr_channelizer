@@ -15,14 +15,14 @@ firstFileSampleTime = nan;
 
 %% Initialize data
 
-mbe = [];
+event = [];
 
 hFig=figure;
-hNextMbePlt=plot(nan,nan,'gd');
+hNextEventPlt=plot(nan,nan,'gd');
 hold on
 hSamplePlt=plot(nan,nan,'b.');
-hMbeFitPlt=plot(nan,nan,'m');
-hCurrMbePlot=plot(nan,nan,'r*');
+hEventFitPlt=plot(nan,nan,'m');
+hCurrEventPlot=plot(nan,nan,'r*');
 
 grid on
 ylabel('SNR (dB)')
@@ -128,25 +128,25 @@ for ii = 1:length(listing)
             t_max = -p(2) / (2*p(1));
             y_max = p(1)*t_max^2 + p(2)*t_max + p(3);
 
-            mbe = [mbe; t_max];
+            event = [event; t_max];
 
-            if length(mbe) > 1
-                nextMbe = median(diff(mbe)) + t_max;
+            if length(event) > 1
+                nextEvent = median(diff(event)) + t_max;
             else
-                nextMbe = t_max + 4.61962892466417;
+                nextEvent = t_max + 4.61962892466417;
             end
 
-            hNextMbePlt.XData = [hNextMbePlt.XData nextMbe];
-            hNextMbePlt.YData = [hNextMbePlt.YData y_max];
+            hNextEventPlt.XData = [hNextEventPlt.XData nextEvent];
+            hNextEventPlt.YData = [hNextEventPlt.YData y_max];
 
-            hMbeFitPlt.XData = [hMbeFitPlt.XData t1 nan];
-            hMbeFitPlt.YData = [hMbeFitPlt.YData y1 nan];
+            hEventFitPlt.XData = [hEventFitPlt.XData t1 nan];
+            hEventFitPlt.YData = [hEventFitPlt.YData y1 nan];
 
             hSamplePlt.XData = [hSamplePlt.XData pdw.toa'];
             hSamplePlt.YData = [hSamplePlt.YData pdw.snr'];
 
-            hCurrMbePlot.XData = [hCurrMbePlot.XData t_max];
-            hCurrMbePlot.YData = [hCurrMbePlot.YData y_max];
+            hCurrEventPlot.XData = [hCurrEventPlot.XData t_max];
+            hCurrEventPlot.YData = [hCurrEventPlot.YData y_max];
         end
     end
 end
