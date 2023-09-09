@@ -77,7 +77,10 @@ for ii = 1:length(listing)
 
                     % compute the median phase difference of this pulse
                     % in order to compute the frequency
-                    medPhaseDiff = median(diff(phase(toa:jj)));
+                    phaseDiff = diff(phase(toa:jj));
+                    phaseDiff(phaseDiff < -180) = phaseDiff(phaseDiff < -180) + 360;
+                    phaseDiff(phaseDiff > 180) = phaseDiff(phaseDiff > 180) - 360;
+                    medPhaseDiff = median(phaseDiff);
 
                     % compute the frequency by finding the period given
                     % the median phase difference and then offset it
