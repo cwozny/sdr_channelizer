@@ -25,7 +25,7 @@
 #include <Eigen/Dense>
 #include <Eigen/QR>
 
-const double get_main_beam_peak_time(const std::vector<double> &t, const std::vector<double> &v)
+const double get_event_peak_time(const std::vector<double> &t, const std::vector<double> &v)
 {
 	// Create Matrix Placeholder of size n x k, n = number of datapoints, k = order of polynomial, for example k = 3 for cubic polynomial
 	Eigen::MatrixXd T(t.size(), 3);
@@ -48,7 +48,7 @@ const double get_main_beam_peak_time(const std::vector<double> &t, const std::ve
 	// Solve for linear least square fit
 	p = T.householderQr().solve(V);
 
-	return (-p[1]/(2*p[2])); // this represents the peak of the main beam as estimated by a quadratic polynomial fit
+	return (-p[1]/(2*p[2])); // this represents the peak of the parabola as estimated by a quadratic polynomial fit
 }
 
 void getFilenameStr(char* filenameStr)
@@ -99,8 +99,8 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 	const float dwellDuration = atof(argv[5]);
 	const float collectionDuration = atof(argv[6]);
 
-	std::vector<double> mbeTimeList;
-	double nextMbeTime = 0;
+	std::vector<double> eventTimeList;
+	double nextEventTime = 0;
 
 	//create a usrp device
 
@@ -226,16 +226,16 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 
 		size_t num_accum_samps = 0;
 
-		if (nextMbeTime > 0)
+		if (nextEventTime > 0)
 		{
-			//std::cout << "Scheduling next RX for " << nextMbeTime - (dwellDuration/2) << std::endl;
+			//std::cout << "Scheduling next RX for " << nextEventTime - (dwellDuration/2) << std::endl;
 			stream_cmd.stream_now  = false;
-			stream_cmd.time_spec   = uhd::time_spec_t(nextMbeTime - (dwellDuration/2));
-			nextMbeTime = 0;
+			stream_cmd.time_spec   = uhd::time_spec_t(nextEventTime - (dwellDuration/2));
+			nextEventTime = 0;
 		}
 		else
 		{
-			//std::cout << "Missed MBE, scheduling next RX for now" << std::endl;
+			//std::cout << "Missed event, scheduling next RX for now" << std::endl;
 			stream_cmd.stream_now  = true;
 			stream_cmd.time_spec   = uhd::time_spec_t();
 		}
@@ -342,34 +342,34 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 				}
 			}
 
-			// Now that we've generated the PDWs, let's go through and see if a
-			// main beam event occurred
+			// Now that we've generated the PDWs, let's go through and see if an
+			// event occurred
 
 			if (toaList.size() > 10)
 			{
-				const double thisMbeTime = get_main_beam_peak_time(toaList, snrList) + meta.time_spec.get_real_secs();
-				std::cout << std::setprecision(15) << "MBE was " << thisMbeTime << std::endl;
-				mbeTimeList.push_back(thisMbeTime);
+				const double thisEventTime = get_event_peak_time(toaList, snrList) + meta.time_spec.get_real_secs();
+				std::cout << std::setprecision(15) << "Event was " << thisEventTime << std::endl;
+				eventTimeList.push_back(thisEventTime);
 
-				if (mbeTimeList.size() > 5)
+				if (eventTimeList.size() > 5)
 				{
-					std::vector<double> diffMbeList;
+					std::vector<double> diffEventList;
 
-					// Compute the difference list of MBE times
-					for (std::uint32_t kk = 1; kk < mbeTimeList.size(); kk++)
+					// Compute the difference list of event times
+					for (std::uint32_t kk = 1; kk < eventTimeList.size(); kk++)
 					{
-						diffMbeList.push_back(mbeTimeList[kk] - mbeTimeList[kk-1]);
+						diffEventList.push_back(eventTimeList[kk] - eventTimeList[kk-1]);
 					}
 
-					// Compute the median time of the difference of MBE times
-					std::sort(std::execution::par_unseq, diffMbeList.begin(), diffMbeList.end());
+					// Compute the median time of the difference of event times
+					std::sort(std::execution::par_unseq, diffEventList.begin(), diffEventList.end());
 
-					const double medDiffMbe = diffMbeList[diffMbeList.size()/2];
+					const double medDiffEvent = diffEventList[diffEventList.size()/2];
 
-					std::cout << "Median of diffMbe: " << medDiffMbe << std::endl;
+					std::cout << "Median of diffEvent: " << medDiffEvent << std::endl;
 
-					nextMbeTime = thisMbeTime + medDiffMbe;
-					std::cout << std::setprecision(15) << "Next MBE will be " << nextMbeTime << std::endl;
+					nextEventTime = thisEventTime + medDiffEvent;
+					std::cout << std::setprecision(15) << "Next event will be " << nextEventTime << std::endl;
 				}
 			}
 		}
