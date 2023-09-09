@@ -324,6 +324,8 @@ int main(const int argc, const char *argv[])
 	}
 	while((currentTime - startTime) / std::chrono::seconds(1) <= collectionDuration);
 
+	// Disable the device
+
 	status = bladerf_enable_module(dev, BLADERF_RX, false);
 
 	if (status == 0)
