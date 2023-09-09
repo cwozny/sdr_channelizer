@@ -312,7 +312,7 @@ int main(const int argc, const char *argv[])
 	    	fout.close();
 
 		currentTime = std::chrono::system_clock::now();
-    	}
+	}
 
 	status = bladerf_enable_module(dev, BLADERF_RX, false);
 
