@@ -252,10 +252,6 @@ int main(int argc, char *argv[])
 		{
 			std::cout << "Overrun detected in scheduled RX. " << meta.actual_count << " valid samples were read." << std::endl;
 		}
-		else
-		{
-			std::cout << "Received " << meta.actual_count << " samples at t=" << meta.timestamp << std::endl;
-		}
 		
 		packet.numSamples = meta.actual_count;
 		packet.sampleStartTime = meta.timestamp;
