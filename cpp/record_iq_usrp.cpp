@@ -133,7 +133,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 	// Compute the requested number of samples and buffer size
 
 	const std::uint32_t sampleLength = dwellDuration*receivedSampleRate;
-	const std::uint32_t bufferSize = 2*ceil(sampleLength/float(maxSampsPerBuffer))*maxSampsPerBuffer;
+	const std::uint32_t bufferSize = 2*(sampleLength+maxSampsPerBuffer);
 
 	// setup streaming
 	uhd::stream_cmd_t stream_cmd(uhd::stream_cmd_t::STREAM_MODE_STOP_CONTINUOUS);
