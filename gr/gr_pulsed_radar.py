@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: GPL-3.0
 #
 # GNU Radio Python Flow Graph
-# Title: Not titled yet
+# Title: GNU Radio Pulsed Radar
 # Author: Chris Wozny
 # Copyright: 2022
 # GNU Radio version: 3.10.1.1
@@ -46,9 +46,9 @@ from gnuradio import qtgui
 class gr_pulsed_radar(gr.top_block, Qt.QWidget):
 
     def __init__(self):
-        gr.top_block.__init__(self, "Not titled yet", catch_exceptions=True)
+        gr.top_block.__init__(self, "GNU Radio Pulsed Radar", catch_exceptions=True)
         Qt.QWidget.__init__(self)
-        self.setWindowTitle("Not titled yet")
+        self.setWindowTitle("GNU Radio Pulsed Radar")
         qtgui.util.check_set_qss()
         try:
             self.setWindowIcon(Qt.QIcon.fromTheme('gnuradio-grc'))
@@ -134,6 +134,41 @@ class gr_pulsed_radar(gr.top_block, Qt.QWidget):
         self.uhd_usrp_sink_0.set_center_freq(carrier_freq, 0)
         self.uhd_usrp_sink_0.set_antenna("TX/RX", 0)
         self.uhd_usrp_sink_0.set_gain(tx_gain, 0)
+        self.qtgui_waterfall_sink_x_0 = qtgui.waterfall_sink_c(
+            4096, #size
+            window.WIN_BLACKMAN_hARRIS, #wintype
+            carrier_freq, #fc
+            samp_rate, #bw
+            "", #name
+            1, #number of inputs
+            None # parent
+        )
+        self.qtgui_waterfall_sink_x_0.set_update_time(0.10)
+        self.qtgui_waterfall_sink_x_0.enable_grid(False)
+        self.qtgui_waterfall_sink_x_0.enable_axis_labels(True)
+
+
+
+        labels = ['', '', '', '', '',
+                  '', '', '', '', '']
+        colors = [0, 0, 0, 0, 0,
+                  0, 0, 0, 0, 0]
+        alphas = [1.0, 1.0, 1.0, 1.0, 1.0,
+                  1.0, 1.0, 1.0, 1.0, 1.0]
+
+        for i in range(1):
+            if len(labels[i]) == 0:
+                self.qtgui_waterfall_sink_x_0.set_line_label(i, "Data {0}".format(i))
+            else:
+                self.qtgui_waterfall_sink_x_0.set_line_label(i, labels[i])
+            self.qtgui_waterfall_sink_x_0.set_color_map(i, colors[i])
+            self.qtgui_waterfall_sink_x_0.set_line_alpha(i, alphas[i])
+
+        self.qtgui_waterfall_sink_x_0.set_intensity_range(-140, 10)
+
+        self._qtgui_waterfall_sink_x_0_win = sip.wrapinstance(self.qtgui_waterfall_sink_x_0.qwidget(), Qt.QWidget)
+
+        self.top_layout.addWidget(self._qtgui_waterfall_sink_x_0_win)
         self.qtgui_time_sink_x_0_0 = qtgui.time_sink_f(
             int(pri_sec*samp_rate), #size
             samp_rate, #samp_rate
@@ -198,6 +233,7 @@ class gr_pulsed_radar(gr.top_block, Qt.QWidget):
         self.connect((self.blocks_vector_source_x_1, 0), (self.blocks_float_to_complex_0, 0))
         self.connect((self.blocks_vector_source_x_1_0, 0), (self.blocks_float_to_complex_0, 1))
         self.connect((self.uhd_usrp_source_0, 0), (self.blocks_complex_to_magphase_1, 0))
+        self.connect((self.uhd_usrp_source_0, 0), (self.qtgui_waterfall_sink_x_0, 0))
 
 
     def closeEvent(self, event):
@@ -225,6 +261,7 @@ class gr_pulsed_radar(gr.top_block, Qt.QWidget):
         self.set_pri_samples((int)(self.pri_sec*self.samp_rate))
         self.set_pw_samples((int)(self.pw_sec*self.samp_rate))
         self.qtgui_time_sink_x_0_0.set_samp_rate(self.samp_rate)
+        self.qtgui_waterfall_sink_x_0.set_frequency_range(self.carrier_freq, self.samp_rate)
         self.uhd_usrp_sink_0.set_samp_rate(self.samp_rate)
         self.uhd_usrp_source_0.set_samp_rate(self.samp_rate)
 
@@ -283,6 +320,7 @@ class gr_pulsed_radar(gr.top_block, Qt.QWidget):
 
     def set_carrier_freq(self, carrier_freq):
         self.carrier_freq = carrier_freq
+        self.qtgui_waterfall_sink_x_0.set_frequency_range(self.carrier_freq, self.samp_rate)
         self.uhd_usrp_sink_0.set_center_freq(self.carrier_freq, 0)
         self.uhd_usrp_source_0.set_center_freq(self.carrier_freq, 0)
 
