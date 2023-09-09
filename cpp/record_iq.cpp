@@ -8,6 +8,7 @@
 #include <bit>
 #include <iostream>
 #include <fstream>
+#include <chrono>
 
 struct IqPacket
 {
@@ -21,7 +22,8 @@ struct IqPacket
 	std::uint32_t spare1;
 	char fpgaVersion[32];
 	char fwVersion[32];
-	std::uint64_t timestamp;
+	std::uint64_t baseTimeMs;
+	std::uint64_t sampleStartTime;
 };
 
 int main(int argc, char *argv[])
@@ -164,7 +166,7 @@ int main(int argc, char *argv[])
 	* RX via bladerf_sync_rx() until a block of `buffer_size` samples has been
 	* received. */
 	const std::uint32_t num_buffers = 4;
-	const std::uint32_t buffer_size = 512 * 1024; /* Must be a multiple of 1024 */
+	const std::uint32_t buffer_size = 1024 * 1024; /* Must be a multiple of 1024 */
 	const std::uint32_t num_transfers = 2;
 	const std::uint32_t timeout_ms = 3500;
 
@@ -218,8 +220,10 @@ int main(int argc, char *argv[])
 	packet.rxGain = rxGain;
 	packet.numSamples = sampleLength;
 
+	packet.baseTimeMs = std::chrono::system_clock::now().time_since_epoch() / std::chrono::milliseconds(1);
+
 	std::int16_t* iq = new std::int16_t[bufferSize];
-	
+
 	for(int ii = 0; ii < 10; ii++)
 	{
 		memset(iq, 0, bufferSize*sizeof(std::int16_t));
@@ -243,7 +247,7 @@ int main(int argc, char *argv[])
 		}
 		
 		packet.numSamples = meta.actual_count;
-		packet.timestamp = meta.timestamp;
+		packet.sampleStartTime = meta.timestamp;
 
 		// current date/time based on current system
 		time_t now = time(0);
