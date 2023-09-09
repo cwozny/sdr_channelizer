@@ -74,6 +74,8 @@ void getFilenameStr(char* filenameStr)
 
 int UHD_SAFE_MAIN(int argc, char *argv[])
 {
+	uhd::set_thread_priority_safe();
+
 	std::int32_t status = EXIT_SUCCESS;
 	uhd::rx_metadata_t meta;
 	std::string device_args("");
@@ -161,7 +163,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 	// Set up the configuration parameters necessary to receive samples with the device
 
 	// create a receive streamer
-	uhd::stream_args_t stream_args("fc32","sc12"); // 32-bit floats on host, 12-bit over-the-wire
+	uhd::stream_args_t stream_args("fc32","sc16"); // 32-bit floats on host, 16-bit over-the-wire
 	uhd::rx_streamer::sptr rx_stream = usrp->get_rx_stream(stream_args);
 	const std::uint32_t maxSampsPerBuffer = rx_stream->get_max_num_samps();
 
