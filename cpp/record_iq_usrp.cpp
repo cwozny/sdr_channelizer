@@ -54,8 +54,6 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 	std::string ref("internal");
 	IqPacket packet;
 	char filenameStr[80];
-	const std::int16_t INT12_MAX = 2047;
-	const std::int16_t INT12_MIN = -2048;
 	bool saturated = false;
 	std::uint32_t overrunCounter = 0;
 
@@ -224,9 +222,9 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 		std::cout << "Received " << num_accum_samps << std::endl;
 
 		// Look for instances of saturating to max positive value
-		std::vector<std::int16_t>::iterator maxVal = std::find(std::execution::par_unseq, std::begin(iq_vec), std::end(iq_vec), INT12_MAX);
+		std::vector<std::int16_t>::iterator maxVal = std::find(std::execution::par_unseq, std::begin(iq_vec), std::end(iq_vec), INT16_MAX);
 		// Look for instances of saturating to max negative value
-		std::vector<std::int16_t>::iterator minVal = std::find(std::execution::par_unseq, std::begin(iq_vec), std::end(iq_vec), INT12_MIN);
+		std::vector<std::int16_t>::iterator minVal = std::find(std::execution::par_unseq, std::begin(iq_vec), std::end(iq_vec), INT16_MIN);
 
 		saturated = (maxVal != std::end(iq_vec)) || (minVal != std::end(iq_vec));
 
