@@ -326,6 +326,6 @@ int main(const int argc, const char *argv[])
 	}
 
 	std::cout << "There were " << overrunCounter << " overruns." << std::endl;
-	
+
 	return status;
 }
