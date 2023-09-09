@@ -101,10 +101,12 @@ int main(const int argc, const char *argv[])
 	strncpy(packet.fwVersion, version.describe, sizeof(packet.fwVersion));
 
 	std::cout << "Firmware version: " << packet.fwVersion << std::endl;
-	
+
 	bladerf_get_serial_struct(dev, &serNo);
-	
+
 	std::cout << "Using " << bladerf_get_board_name(dev) << " serial number " << serNo.serial << std::endl;
+
+	// Set center frequency of device
 
 	status = bladerf_set_frequency(dev, channel, frequencyHz);
 
@@ -119,6 +121,8 @@ int main(const int argc, const char *argv[])
 		return 1;
 	}
 
+	// Set sample rate of device
+
 	status = bladerf_set_sample_rate(dev, channel, requestedSampleRate, &receivedSampleRate);
 
 	if (status == 0)
@@ -131,6 +135,8 @@ int main(const int argc, const char *argv[])
 		bladerf_close(dev);
 		return 1;
 	}
+
+	// Set analog bandwidth of device
 
 	status = bladerf_set_bandwidth(dev, channel, requestedBandwidthHz, &receivedBandwidthHz);
 
@@ -146,6 +152,7 @@ int main(const int argc, const char *argv[])
 	}
 
 	// Disable automatic gain control
+
 	status = bladerf_set_gain_mode(dev, channel, BLADERF_GAIN_MGC);
 
 	if (status == 0)
@@ -153,11 +160,13 @@ int main(const int argc, const char *argv[])
 		std::cout << "Disabled automatic gain control" << std::endl;
 	}
 	else
-        {
-                std::cout << "Failed to disable automatic gain control: " << bladerf_strerror(status) << std::endl;
-                bladerf_close(dev);
+	{
+		std::cout << "Failed to disable automatic gain control: " << bladerf_strerror(status) << std::endl;
+		bladerf_close(dev);
 		return 1;
-        }
+	}
+
+	// Set gain of the device
 
 	status = bladerf_set_gain(dev, channel, rxGain);
 
