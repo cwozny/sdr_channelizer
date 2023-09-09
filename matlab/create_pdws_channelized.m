@@ -126,7 +126,7 @@ for ii = 1:length(listing)
                         pdw.snr = [pdw.snr; thisSnr];
                         pdw.sat = [pdw.sat; saturated];
                     else % Otherwise we're still measuring a pulse
-                        if real(iq(jj,bin)) >= 0.9999 || imag(iq(jj,bin)) >= 0.9999
+                        if abs(real(iq(jj,bin))) >= 0.9999 || abs(imag(iq(jj,bin))) >= 0.9999
                             saturated = true;
                         end
                     end
