@@ -57,7 +57,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 	bool saturated = false;
 	std::uint32_t overrunCounter = 0;
 
-	const std::uint32_t frequencyHz = atof(argv[1])*1e6;
+	const std::uint64_t frequencyHz = atof(argv[1])*1e6;
 	const std::uint32_t requestedBandwidthHz = atof(argv[2])*1e6;
 	std::uint32_t receivedBandwidthHz = 0;
 	const std::uint32_t requestedSampleRate = atof(argv[3])*1e6;
