@@ -41,7 +41,7 @@ for ii = 1:length(listing)
 
         fprintf('%s - Generating PDWs\n', datestr(now))
 
-        SNR_THRESHOLD = 7 % dB
+        SNR_THRESHOLD = 10 % dB
         PULSE_THRESHOLD = nf*10^(SNR_THRESHOLD/10)
 
         pulseActive = false;
