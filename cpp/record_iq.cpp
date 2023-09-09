@@ -12,6 +12,10 @@
 #include <iostream>
 #include <fstream>
 #include <chrono>
+#include <algorithm>
+#include <vector>
+#include <iterator>
+#include <execution>
 
 void getFilenameStr(char* filenameStr)
 {
@@ -34,7 +38,7 @@ void getFilenameStr(char* filenameStr)
 	snprintf(filenameStr, 80, "%04d_%02d_%02d_%02d_%02d_%02d_%03d.iq", year, month, day, hour, minute, second, millisecond);
 }
 
-int main(int argc, char *argv[])
+int main(const int argc, const char *argv[])
 {
 	std::int32_t status;
 	bladerf *dev = NULL;
@@ -45,13 +49,16 @@ int main(int argc, char *argv[])
 	bladerf_serial serNo;
 	IqPacket packet;
 	char filenameStr[80];
+	const std::int16_t INT12_MAX = 2047;
+	const std::int16_t INT12_MIN = -2048;
+	bool saturated = false;
 
 	const std::uint32_t frequencyHz = atof(argv[1])*1e6;
 	const std::uint32_t requestedBandwidthHz = atof(argv[2])*1e6;
 	std::uint32_t receivedBandwidthHz = 0;
 	const std::uint32_t requestedSampleRate = atof(argv[3])*1e6;
 	std::uint32_t receivedSampleRate = 0;
-	const std::int32_t rxGain = atoi(argv[4]);
+	std::int32_t rxGain = atoi(argv[4]);
 	const float dwellDuration = atof(argv[5]);
 	const float collectionDuration = atof(argv[6]);
 
@@ -225,18 +232,39 @@ int main(int argc, char *argv[])
 	packet.frequencyHz = frequencyHz;
 	packet.bandwidthHz = receivedBandwidthHz;
 	packet.sampleRate = receivedSampleRate;
-	packet.rxGain = rxGain;
 	packet.numSamples = sampleLength;
 
 	packet.baseTimeMs = std::chrono::system_clock::now().time_since_epoch() / std::chrono::milliseconds(1);
 
-	std::int16_t* iq = new std::int16_t[bufferSize];
+	std::vector<std::int16_t> iq_vec;
+	iq_vec.resize(bufferSize, 0);
+	std::int16_t* iq = iq_vec.data();
 
 	const std::chrono::system_clock::time_point startTime = std::chrono::system_clock::now();
 	std::chrono::system_clock::time_point currentTime = std::chrono::system_clock::now();
 
 	while((currentTime - startTime) / std::chrono::seconds(1) <= collectionDuration)
 	{
+		// If we're saturated, then drop the receive gain down by 1 dB
+		if (saturated)
+		{
+			status = bladerf_set_gain(dev, channel, --rxGain);
+
+			if (status == 0)
+			{
+				std::cout << "Gain = " << rxGain << " dB" << std::endl;
+			}
+			else
+			{
+				std::cout << "Failed to set gain: " << bladerf_strerror(status) << std::endl;
+				bladerf_close(dev);
+				return 1;
+			}
+		}
+
+		packet.rxGain = rxGain;
+		saturated = false;
+
 		memset(iq, 0, bufferSize*sizeof(std::int16_t));
 
 		memset(&meta, 0, sizeof(meta));
@@ -251,6 +279,15 @@ int main(int argc, char *argv[])
 		else if (meta.status & BLADERF_META_STATUS_OVERRUN)
 		{
 			std::cout << "Overrun detected in scheduled RX. " << meta.actual_count << " valid samples were read." << std::endl;
+		}
+		else
+		{
+			// Look for instances of saturating to max positive value
+			std::vector<std::int16_t>::iterator maxVal = std::find(std::execution::par_unseq, std::begin(iq_vec), std::end(iq_vec), INT12_MAX);
+			// Look for instances of saturating to max negative value
+			std::vector<std::int16_t>::iterator minVal = std::find(std::execution::par_unseq, std::begin(iq_vec), std::end(iq_vec), INT12_MIN);
+
+			saturated = (maxVal != std::end(iq_vec)) || (minVal != std::end(iq_vec));
 		}
 		
 		packet.numSamples = meta.actual_count;
@@ -277,7 +314,5 @@ int main(int argc, char *argv[])
 		std::cout << "Failed to disable RX: " << bladerf_strerror(status) << std::endl;
 	}
 	
-	delete[] iq;
-
 	return status;
 }
