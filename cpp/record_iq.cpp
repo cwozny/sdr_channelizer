@@ -5,6 +5,7 @@
 #include <cstring>
 #include <ctime>
 
+#include <bit>
 #include <iostream>
 #include <fstream>
 
@@ -13,11 +14,12 @@ const unsigned int bufferSize = 2*sampleLength;
 
 struct IqPacket
 {
-	unsigned int frequencyHz;
-	unsigned int bandwidthHz;
-	unsigned int sampleRate;
-	unsigned int rxGain;
-	int16_t iq[bufferSize];
+	std::uint32_t endianness;
+	std::uint32_t frequencyHz;
+	std::uint32_t bandwidthHz;
+	std::uint32_t sampleRate;
+	std::uint32_t rxGain;
+	std::int16_t iq[bufferSize];
 };
 
 int main(int argc, char *argv[])
@@ -125,10 +127,10 @@ int main(int argc, char *argv[])
 	* bladerf_sync_tx call. Similarly, samples will not be available to
 	* RX via bladerf_sync_rx() until a block of `buffer_size` samples has been
 	* received. */
-	const unsigned int num_buffers = 16;
-	const unsigned int buffer_size = 8192; /* Must be a multiple of 1024 */
-	const unsigned int num_transfers = 8;
-	const unsigned int timeout_ms = 3500;
+	const std::uint32_t num_buffers = 16;
+	const std::uint32_t buffer_size = 8192; /* Must be a multiple of 1024 */
+	const std::uint32_t num_transfers = 8;
+	const std::uint32_t timeout_ms = 3500;
 
 	/* Configure both the device's x1 RX and TX channels for use with the
 	* synchronous
@@ -160,13 +162,26 @@ int main(int argc, char *argv[])
 	
 	for(int ii = 0; ii < 10; ii++)
 	{
-		memset(&packet.iq, 0, bufferSize*sizeof(int16_t));
+		memset(&packet.iq, 0, bufferSize*sizeof(std::int16_t));
 		
+		if constexpr (std::endian::native == std::endian::big)
+		{
+			packet.endianness = 0x00000000;
+		}
+		else if constexpr (std::endian::native == std::endian::little)
+		{
+			packet.endianness = 0x01010101;
+		}
+		else
+		{
+			packet.endianness = 0xFFFFFFFF;
+		}
+
 		packet.frequencyHz = frequencyHz;
 		packet.bandwidthHz = receivedBandwidthHz;
 		packet.sampleRate = receivedSampleRate;
 		packet.rxGain = rxGain;
-	
+
 		status = bladerf_sync_rx(dev, &packet.iq, sampleLength, &meta, 5000);
 
 		if (status == 0)
