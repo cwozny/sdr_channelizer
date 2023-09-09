@@ -49,7 +49,7 @@ for ii = 1:100*numBands:length(iq)
 
     zeroCenterOut = fftshift(out,2);
 
-    f = (fc+centerFrequencies(channelizer,fs))*1e-6;
+    f = (fc-centerFrequencies(channelizer,fs))*1e-6;
     t = ii/fs + (0:size(out,1)-1)*numBands/fs;
 
     hSurf.XData = f;
