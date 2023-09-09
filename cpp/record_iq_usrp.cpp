@@ -131,6 +131,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 	// create a receive streamer
 	uhd::stream_args_t stream_args("sc16","sc12"); // 16-bit integers on host, 12-bit over-the-wire
 	uhd::rx_streamer::sptr rx_stream = usrp->get_rx_stream(stream_args);
+	const std::uint32_t maxSampsPerBuffer = rx_stream->get_max_num_samps();
 
 	// setup streaming
 	uhd::stream_cmd_t stream_cmd(uhd::stream_cmd_t::STREAM_MODE_STOP_CONTINUOUS);
