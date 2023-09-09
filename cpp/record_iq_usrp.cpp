@@ -14,12 +14,12 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 
     std::string device_args("addr=192.168.10.2");
     std::string subdev("A:0");
-    std::string ant("TX/RX");
+    std::string ant("RX2");
     std::string ref("internal");
 
     double rate(1e6);
-    double freq(915e6);
-    double gain(10);
+    double freq(152.6e6);
+    double gain(30);
     double bw(1e6);
 
     //create a usrp device
