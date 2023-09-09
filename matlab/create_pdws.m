@@ -31,10 +31,6 @@ for ii = 1:length(listing)
         mag = abs(iq);
         phase = rad2deg(angle(iq));
 
-        fprintf('%s - Computing time\n', datestr(now))
-
-        n = length(iq);
-
         fprintf('%s - Computing noise floor\n', datestr(now))
 
         nf = median(mag);
@@ -47,7 +43,7 @@ for ii = 1:length(listing)
         pulseActive = false;
         saturated = false;
         
-        for jj = 1:n
+        for jj = 1:length(iq)
             % Look for a leading edge
             if ~pulseActive
                 if mag(jj) >= PULSE_THRESHOLD
