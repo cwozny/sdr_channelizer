@@ -62,6 +62,7 @@ int main(const int argc, const char *argv[])
 	std::int32_t rxGain = atoi(argv[4]);
 	const float dwellDuration = atof(argv[5]);
 	const float collectionDuration = atof(argv[6]);
+	const bool autoGainReduction = (atoi(argv[7]) != 0);
 
 	/* Initialize the information used to identify the desired device
 	* to all wildcard (i.e., "any device") values */
@@ -264,13 +265,14 @@ int main(const int argc, const char *argv[])
 	do
 	{
 		// If we're saturated, then drop the receive gain down by 1 dB
-		if (saturated)
+		if (autoGainReduction && saturated)
 		{
 			status = bladerf_set_gain(dev, channel, --rxGain);
 
 			if (status == 0)
 			{
 				std::cout << "Gain = " << rxGain << " dB" << std::endl;
+				packet.rxGain = rxGain;
 			}
 			else
 			{
@@ -280,7 +282,6 @@ int main(const int argc, const char *argv[])
 			}
 		}
 
-		packet.rxGain = rxGain;
 		saturated = false;
 
 		memset(iq, 0, bufferSize*sizeof(std::int16_t));
@@ -305,15 +306,19 @@ int main(const int argc, const char *argv[])
 		{
 			std::cout << "Received " << meta.actual_count << std::endl;
 
-			// Look for instances of saturating to min or max value
+			// If we want to automatically reduce gain
+			if (autoGainReduction)
+			{
+				// Look for instances of samples saturated to min or max value
 #ifdef __linux__
-			const auto [minSamp, maxSamp] = std::minmax_element(std::execution::par_unseq, std::begin(iq_vec), std::end(iq_vec));
+				const auto [minSamp, maxSamp] = std::minmax_element(std::execution::par_unseq, std::begin(iq_vec), std::end(iq_vec));
 #elif __APPLE__
-			const auto [minSamp, maxSamp] = std::minmax_element(std::begin(iq_vec), std::end(iq_vec));
+				const auto [minSamp, maxSamp] = std::minmax_element(std::begin(iq_vec), std::end(iq_vec));
 #else
 #error "Unsupported operating system!"
 #endif
-			saturated = (((*minSamp) <= SAMP_MIN) || ((*maxSamp) >= SAMP_MAX));
+				saturated = (((*minSamp) <= SAMP_MIN) || ((*maxSamp) >= SAMP_MAX));
+			}
 		}
 
 		packet.numSamples = meta.actual_count;
