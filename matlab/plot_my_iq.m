@@ -11,11 +11,6 @@ close all
 
 listing = dir('../cpp');
 
-pdw.t = [];
-pdw.snr = [];
-pdw.pw = [];
-pdw.saturated = [];
-
 for ii = 1:length(listing)
     if contains(listing(ii).name,'.iq')
 
