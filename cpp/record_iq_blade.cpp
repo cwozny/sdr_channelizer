@@ -305,14 +305,12 @@ int main(const int argc, const char *argv[])
 		{
 			std::cout << "Received " << meta.actual_count << std::endl;
 
-			// Look for instances of saturating to max positive value
-			std::vector<std::int16_t>::iterator maxVal = std::find(std::execution::par_unseq, std::begin(iq_vec), std::end(iq_vec), SAMP_MAX);
-			// Look for instances of saturating to max negative value
-			std::vector<std::int16_t>::iterator minVal = std::find(std::execution::par_unseq, std::begin(iq_vec), std::end(iq_vec), SAMP_MIN);
+			// Look for instances of saturating to min or max value
+			const auto [minSamp, maxSamp] = std::minmax_element(std::execution::par_unseq, std::begin(iq_vec), std::end(iq_vec));
 
-			saturated = (maxVal != std::end(iq_vec)) || (minVal != std::end(iq_vec));
+			saturated = (((*minSamp) <= SAMP_MIN) || ((*maxSamp) >= SAMP_MAX));
 		}
-		
+
 		packet.numSamples = meta.actual_count;
 
 		getFilenameStr(filenameStr);
