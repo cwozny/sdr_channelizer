@@ -288,7 +288,7 @@ int main(const int argc, const char *argv[])
 		memset(&meta, 0, sizeof(meta));
 		meta.flags = BLADERF_META_FLAG_RX_NOW;
 
-		packet.sampleStartTime = (std::chrono::system_clock::now().time_since_epoch() / std::chrono::microseconds(1)) * 1e-6;
+		packet.sampleStartTime = (std::chrono::system_clock::now().time_since_epoch() / std::chrono::nanoseconds(1)) * 1e-9;
 
 		status = bladerf_sync_rx(dev, iq, sampleLength, &meta, 5000);
 

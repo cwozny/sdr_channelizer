@@ -143,7 +143,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 
 	// Set the time on the device
 
-	const double timeInSecs = std::chrono::system_clock::now().time_since_epoch() / std::chrono::microseconds(1) * 1e-6;
+	const double timeInSecs = std::chrono::system_clock::now().time_since_epoch() / std::chrono::nanoseconds(1) * 1e-9;
 
 	usrp->set_time_now(uhd::time_spec_t(timeInSecs));
 
