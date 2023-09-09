@@ -200,14 +200,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 	packet.numSamples = sampleLength;
 
 	// Allocate the host buffer the device will be streaming to
-
-	std::vector<std::complex<float>> iq_vec;
-	iq_vec.resize(sampleLength, 0);
-	std::complex<float>* iq = iq_vec.data();
-	std::vector<float> mag;
-	mag.resize(sampleLength, 0);
-	std::vector<float> phase;
-	phase.resize(sampleLength, 0);
+	Eigen::VectorXcf iq = Eigen::VectorXcf(sampleLength);
 
 	const std::chrono::system_clock::time_point startTime = std::chrono::system_clock::now();
 	std::chrono::system_clock::time_point currentTime;
@@ -227,7 +220,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 		saturated = false;
 		badSamples = false;
 
-		memset(iq, 0, sampleLength*sizeof(std::complex<float>));
+		iq.setZero();
 
 		memset(&meta, 0, sizeof(meta));
 
@@ -256,7 +249,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 			const std::int32_t startIndex = num_accum_samps;
 			const std::int32_t remainingSize = sampleLength-num_accum_samps;
 
-			num_accum_samps += rx_stream->recv(&iq[startIndex], remainingSize, meta, 30.0, true);
+			num_accum_samps += rx_stream->recv(&iq(startIndex), remainingSize, meta, 30.0, true);
 
 			// Handle streaming error codes
 			switch (meta.error_code)
@@ -291,17 +284,11 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 		// If we received a full set of samples with no error
 		if (badSamples == false)
 		{
-			for(std::uint32_t jj = 0; jj < num_accum_samps; jj++)
-			{
-				mag[jj] = std::abs(iq[jj]);
-			}
-
-			std::sort(std::execution::par_unseq, mag.begin(), mag.end());
-
-			// Compute the noise floor as the median of the magnitude of the I/Q data
-			const double NOISE_FLOOR = mag[mag.size()/2]; // compute the median by picking the middle element of sorted vector
-			const double SNR_THRESHOLD = 20; // dB
-			const double PULSE_THRESHOLD = NOISE_FLOOR * pow(10,SNR_THRESHOLD/10);
+			// Compute the noise floor as the mean of the magnitude of the I/Q data
+			Eigen::VectorXf mag = iq.cwiseAbs();
+			const float NOISE_FLOOR = mag.mean();
+			const float SNR_THRESHOLD = 20; // dB
+			const float PULSE_THRESHOLD = NOISE_FLOOR * pow(10,SNR_THRESHOLD/10);
 
 			bool pulseActive = false; // keeps track of whether pulse is active
 			bool pulseSaturated = false; // keeps track of whether pulse was ever saturated
@@ -316,17 +303,17 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 				// Look for a leading edge
 				if (pulseActive == false)
 				{
-					if (std::abs(iq[jj]) >= PULSE_THRESHOLD)
+					if (mag(jj) >= PULSE_THRESHOLD)
 					{
 						pulseActive = true; // a pulse is now active
 						toa = jj; // initialize the time of arrival to current index
 						pulseSaturated = false; // initialize whether the pulse was ever saturated
-						amp = std::abs(iq[jj]);
+						amp = mag(jj);
 					}
 				}
 				else // Look for a trailing edge now that pulse is active
 				{
-					if (std::abs(iq[jj]) <= PULSE_THRESHOLD) // Declare a trailing edge
+					if (mag(jj) <= PULSE_THRESHOLD) // Declare a trailing edge
 					{
 						pulseActive = false; // the pulse is no longer active
 
@@ -344,9 +331,9 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 					}
 					else // Otherwise we're still measuring a pulse
 					{
-						amp += std::abs(iq[jj]); // continue accumulating the magnitude of the pulse
+						amp += mag(jj); // continue accumulating the magnitude of the pulse
 
-						if (std::abs(iq[jj].real()) >= SAMP_MAX || std::abs(iq[jj].imag()) >= SAMP_MAX)
+						if (std::abs(iq(jj).real()) >= SAMP_MAX || std::abs(iq(jj).imag()) >= SAMP_MAX)
 						{
 							pulseSaturated = true;
 							saturated = true;
