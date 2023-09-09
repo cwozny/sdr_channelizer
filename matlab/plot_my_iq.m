@@ -9,9 +9,12 @@ close all
 
 %% Load data
 
-listing = dir(uigetdir('/'));
+listing = dir(uigetdir('./'));
 
 for ii = 1:length(listing)
+
+    loaded = false;
+
     if contains(listing(ii).name,'.iq')
 
         fprintf('%s - Reading %s\n', datetime, listing(ii).name)
@@ -44,8 +47,22 @@ for ii = 1:length(listing)
 
         assert(length(iq) == numSamples)
 
+        loaded = true;
+
+    elseif contains(listing(ii).name,'.mat')
+
+        fprintf('%s - Loading %s\n', datetime, listing(ii).name)
+
+        load(fullfile(listing(ii).folder,listing(ii).name))
+
+        loaded = true;
+
+    end
+
+    if loaded
         iq = double(iq);
-        iq = iq/32768;
+        %iq = iq/32768; % This is the max for the USRP b200mini
+        iq = iq/2048; % This is the max for the bladeRF 2.0 micro
         iq = iq(1,:) + 1j*iq(2,:);
 
         mag = abs(iq);
@@ -58,7 +75,7 @@ for ii = 1:length(listing)
         fprintf('%s - Plotting\n', datetime)
 
         figure
-        
+
         subplot(2,1,1)
         plot(t,mag,'.')
         grid on
