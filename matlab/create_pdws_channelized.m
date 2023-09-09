@@ -70,7 +70,7 @@ for ii = 1:length(listing)
         % I used median here instead of average because it is a "resistant
         % statistic".
         NOISE_FLOOR = median(mag);
-        SNR_THRESHOLD = 34 % dB
+        SNR_THRESHOLD = 15 % dB
         PULSE_THRESHOLD = NOISE_FLOOR*10^(SNR_THRESHOLD/10)
 
         fprintf('%s - Generating PDWs\n', datestr(now))
@@ -110,7 +110,10 @@ for ii = 1:length(listing)
 
                         % compute the median phase difference of this pulse
                         % in order to compute the frequency
-                        medPhaseDiff = median(diff(phase(toa:jj,bin)));
+                        phaseDiff = diff(phase(toa:jj));
+                        phaseDiff(phaseDiff < -180) = phaseDiff(phaseDiff < -180) + 360;
+                        phaseDiff(phaseDiff > 180) = phaseDiff(phaseDiff > 180) - 360;
+                        medPhaseDiff = median(phaseDiff);
 
                         % compute the frequency by finding the period given
                         % the median phase difference and then offset it
