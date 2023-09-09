@@ -37,8 +37,7 @@ for ii = 1:length(listing)
         spare1 = fread(fid,1,'uint32=>uint32');
         fpgaVersion = string(fread(fid,32,'*char')');
         fwVersion = string(fread(fid,32,'*char')');
-        baseTimeMs = fread(fid,1,'uint64=>uint64');
-        sampleStartTime = fread(fid,1,'uint64=>uint64');
+        sampleStartTime = fread(fid,1,'float64=>float64');
         iq = fread(fid,[2,inf],'int16=>int16');
 
         fclose(fid);
@@ -55,7 +54,7 @@ for ii = 1:length(listing)
 
         [filepath,name,ext] = fileparts(listing(ii).name);
 
-        save(sprintf('%s.mat',name),'iq','fs','fc','dur','bw','gain','sampleStartTime','baseTimeMs','linkSpeed','fpgaVersion','fwVersion','-v7.3')
+        save(sprintf('%s.mat',name),'iq','fs','fc','dur','bw','gain','sampleStartTime','linkSpeed','fpgaVersion','fwVersion','-v7.3')
 
         clear iq
         clear fs
