@@ -33,6 +33,7 @@ for ii = 1:length(listing)
         fs = fread(fid,1,'uint32=>float64');
         gain = fread(fid,1,'uint32=>float64');
         numSamples = fread(fid,1,'uint32=>float64');
+        timestamp = fread(fid,1,'uint64=>uint64');
 
         iq = fread(fid,[2,inf],'int16=>int16');
 
@@ -50,7 +51,7 @@ for ii = 1:length(listing)
 
         [filepath,name,ext] = fileparts(listing(ii).name);
 
-        save(sprintf('%s.mat',name),'iq','fs','fc','dur','-v7.3')
+        save(sprintf('%s.mat',name),'iq','fs','fc','dur','bw','gain','timestamp','-v7.3')
 
         clear iq
         clear fs

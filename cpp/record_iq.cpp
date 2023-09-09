@@ -17,6 +17,7 @@ struct IqPacket
 	std::uint32_t sampleRate;
 	std::uint32_t rxGain;
 	std::uint32_t numSamples;
+	std::uint64_t timestamp;
 };
 
 int main(int argc, char *argv[])
@@ -126,14 +127,14 @@ int main(int argc, char *argv[])
 	* RX via bladerf_sync_rx() until a block of `buffer_size` samples has been
 	* received. */
 	const std::uint32_t num_buffers = 16;
-	const std::uint32_t buffer_size = 8192; /* Must be a multiple of 1024 */
+	const std::uint32_t buffer_size = 32768; /* Must be a multiple of 1024 */
 	const std::uint32_t num_transfers = 8;
 	const std::uint32_t timeout_ms = 3500;
 
 	/* Configure both the device's x1 RX and TX channels for use with the
 	* synchronous
-	* interface. SC16 Q11 samples *without* metadata are used. */
-	status = bladerf_sync_config(dev, BLADERF_RX_X1, BLADERF_FORMAT_SC16_Q11, num_buffers, buffer_size, num_transfers, timeout_ms);
+	* interface. SC16 Q11 samples *with* metadata are used. */
+	status = bladerf_sync_config(dev, BLADERF_RX_X1, BLADERF_FORMAT_SC16_Q11_META, num_buffers, buffer_size, num_transfers, timeout_ms);
 
 	if (status == 0)
 	{
@@ -170,7 +171,7 @@ int main(int argc, char *argv[])
 	{
 		packet.endianness = 0xFFFFFFFF;
 	}
-	
+
 	const std::uint32_t sampleLength = dwellDuration*receivedSampleRate;
 	const std::uint32_t bufferSize = 2*sampleLength;
 
@@ -186,16 +187,26 @@ int main(int argc, char *argv[])
 	{
 		memset(iq, 0, bufferSize*sizeof(std::int16_t));
 
+		memset(&meta, 0, sizeof(meta));
+		meta.flags = BLADERF_META_FLAG_RX_NOW;
+
 		status = bladerf_sync_rx(dev, iq, sampleLength, &meta, 5000);
 
-		if (status == 0)
+		if (status != 0)
 		{
-			std::cout << "Sampling..." << std::endl;
+			std::cout << "Scheduled RX failed: " << bladerf_strerror(status) << std::endl;
+		}
+		else if (meta.status & BLADERF_META_STATUS_OVERRUN)
+		{
+			std::cout << "Overrun detected in scheduled RX. " << meta.actual_count << " valid samples were read." << std::endl;
 		}
 		else
 		{
-			std::cout << "Failed to sample: " << bladerf_strerror(status) << std::endl;
+			std::cout << "Received " << meta.actual_count << " samples at t=" << meta.timestamp << std::endl;
 		}
+		
+		packet.numSamples = meta.actual_count;
+		packet.timestamp = meta.timestamp;
 
 		// current date/time based on current system
 		time_t now = time(0);
@@ -208,7 +219,7 @@ int main(int argc, char *argv[])
 
 		std::ofstream fout(filenameStr);
 	    	fout.write((char*)&packet, sizeof(packet));
-	    	fout.write((char*)iq, bufferSize*sizeof(std::int16_t));
+	    	fout.write((char*)iq, 2*meta.actual_count*sizeof(std::int16_t));
 	    	fout.close();
     	}
 
