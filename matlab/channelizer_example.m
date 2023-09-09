@@ -19,61 +19,49 @@ iq = iq';
 
 fprintf('%s - Channelizing data\n', datestr(now))
 
-numBands = 50;
+numBands = 40;
 
 channelizer = dsp.Channelizer(numBands);
 
-extra = mod(length(iq),numBands);
+duration = 5e-3;
+samples = duration*fs;
 
-iq(end-(extra-1):end) = [];
+vidObj = VideoWriter('blah');
 
-output = channelizer(iq);
+open(vidObj)
 
-%% Compute intermediate data
-
-fprintf('%s - Computing intermediate data\n', datestr(now))
-
-mag = abs(iq);
-% phase = rad2deg(angle(iq));
-
-%% Compute time
-
-fprintf('%s - Computing time\n', datestr(now))
-
-n = length(iq);
-decN = length(output(:,1));
-
-t = 0 : (1/fs) : ((n-1)/fs);
-decT = 0 : (numBands/fs) : (numBands*(decN-1)/fs);
-
-%% Plot some stuff
-
-fprintf('%s - Plotting data\n', datestr(now))
-
-startT = 8;
-stopT = 9;
-
-% startT = 0;
-% stopT = 60;
-
-chanDelay = 1.2e-6;
-
-timeIdx = startT <= t & t <= stopT;
-decTimeIdx = startT <= decT & decT <= stopT;
-
-figure
-plot(t(timeIdx), mag(timeIdx))
+hFig=figure('WindowState','maximized');
+hSurf = surf(1:2,1:2,rand(2));
+hSurf.EdgeColor = 'none';
 hold on
-plot(decT(decTimeIdx)-chanDelay, abs(output(decTimeIdx,1)))
-plot(decT(decTimeIdx)-chanDelay, abs(output(decTimeIdx,2)))
-plot(decT(decTimeIdx)-chanDelay, abs(output(decTimeIdx,3)))
-plot(decT(decTimeIdx)-chanDelay, abs(output(decTimeIdx,4)))
-plot(decT(decTimeIdx)-chanDelay, abs(output(decTimeIdx,5)))
-plot(decT(decTimeIdx)-chanDelay, abs(output(decTimeIdx,6)))
-plot(decT(decTimeIdx)-chanDelay, abs(output(decTimeIdx,7)))
-plot(decT(decTimeIdx)-chanDelay, abs(output(decTimeIdx,8)))
-plot(decT(decTimeIdx)-chanDelay, abs(output(decTimeIdx,9)))
-plot(decT(decTimeIdx)-chanDelay, abs(output(decTimeIdx,10)))
-ylim([0 1.5])
-grid on
-legend('Original','0','+1','+2','+3','+4','+-5','-4','-3','-2','-1')
+xlabel('Frequency (MHz)')
+ylabel('Time (sec)')
+zlabel('Magnitude')
+
+pause(1)
+
+for ii = 1:500e-6*fs:length(iq)
+
+    start = ii;
+    stop = ii+samples-1;
+
+    out = abs(channelizer(iq(start:stop)));
+
+    zeroCenterOut = fftshift(out,2);
+
+    f = fc+centerFrequencies(channelizer,fs)*1e-6;
+    t = ii/fs + (0:size(out,1)-1)*numBands/fs;
+
+    hSurf.XData = f;
+    hSurf.YData = t;
+    hSurf.ZData = zeroCenterOut;
+    
+    axis tight
+
+    zlim([0 1.5])
+
+    writeVideo(vidObj,getframe(gcf))
+
+end
+
+close(vidObj)
