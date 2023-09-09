@@ -181,6 +181,13 @@ int main(const int argc, const char *argv[])
 		return 1;
 	}
 
+	// Compute the requested number of samples and buffer size
+
+	const std::uint32_t sampleLength = dwellDuration*receivedSampleRate;
+	const std::uint32_t bufferSize = 2*sampleLength;
+
+	// Set up the configuration parameters necessary to receive samples with the device
+
 	/* These items configure the underlying asynch stream used by the sync
 	* interface. The "buffer" here refers to those used internally by worker
 	* threads, not the user's sample buffers.
@@ -222,7 +229,9 @@ int main(const int argc, const char *argv[])
 		std::cout << "Failed to enable RX: " << bladerf_strerror(status) << std::endl;
 		bladerf_close(dev);
 	}
-	
+
+	// Specify the endianness of the recording
+
 	if constexpr (std::endian::native == std::endian::big)
 	{
 		packet.endianness = 0x00000000;
@@ -236,24 +245,24 @@ int main(const int argc, const char *argv[])
 		packet.endianness = 0xFFFFFFFF;
 	}
 
-	const std::uint32_t sampleLength = dwellDuration*receivedSampleRate;
-	const std::uint32_t bufferSize = 2*sampleLength;
+	// Set information about the recording for data analysis purposes
 
 	packet.frequencyHz = frequencyHz;
 	packet.bandwidthHz = receivedBandwidthHz;
 	packet.sampleRate = receivedSampleRate;
 	packet.numSamples = sampleLength;
-
 	packet.baseTimeMs = std::chrono::system_clock::now().time_since_epoch() / std::chrono::milliseconds(1);
+
+	// Allocate the host buffer the device will be streaming to
 
 	std::vector<std::int16_t> iq_vec;
 	iq_vec.resize(bufferSize, 0);
 	std::int16_t* iq = iq_vec.data();
 
 	const std::chrono::system_clock::time_point startTime = std::chrono::system_clock::now();
-	std::chrono::system_clock::time_point currentTime = std::chrono::system_clock::now();
+	std::chrono::system_clock::time_point currentTime;
 
-	while((currentTime - startTime) / std::chrono::seconds(1) <= collectionDuration)
+	do
 	{
 		// If we're saturated, then drop the receive gain down by 1 dB
 		if (saturated)
@@ -307,12 +316,13 @@ int main(const int argc, const char *argv[])
 		getFilenameStr(filenameStr);
 
 		std::ofstream fout(filenameStr);
-	    	fout.write((char*)&packet, sizeof(packet));
-	    	fout.write((char*)iq, 2*meta.actual_count*sizeof(std::int16_t));
-	    	fout.close();
+		fout.write((char*)&packet, sizeof(packet));
+		fout.write((char*)iq, 2*meta.actual_count*sizeof(std::int16_t));
+		fout.close();
 
 		currentTime = std::chrono::system_clock::now();
 	}
+	while((currentTime - startTime) / std::chrono::seconds(1) <= collectionDuration);
 
 	status = bladerf_enable_module(dev, BLADERF_RX, false);
 
