@@ -13,9 +13,25 @@
 #include <fstream>
 #include <chrono>
 
+void getFilenameStr(char* filenameStr, std::uint8_t ii)
+{
+	std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
+	time_t tt = std::chrono::system_clock::to_time_t(now);
+	tm utc_tm = *gmtime(&tt);
+
+	std::uint16_t year  = utc_tm.tm_year + 1900;
+	std::uint8_t month  = utc_tm.tm_mon + 1;
+	std::uint8_t day    = utc_tm.tm_mday;
+	std::uint8_t hour   = utc_tm.tm_hour;
+	std::uint8_t minute = utc_tm.tm_min;
+	std::uint8_t second = utc_tm.tm_sec;
+
+	snprintf(filenameStr, 80, "%04d_%02d_%02d_%02d_%02d_%02d_%03d.iq", year, month, day, hour, minute, second, ii);
+}
+
 int main(int argc, char *argv[])
 {
-	int status;
+	std::int32_t status;
 	bladerf *dev = NULL;
 	bladerf_devinfo dev_info;
 	bladerf_metadata meta;
@@ -23,7 +39,6 @@ int main(int argc, char *argv[])
 	struct bladerf_version version;
 	bladerf_serial serNo;
 	IqPacket packet;
-	char datetimeStr[80];
 	char filenameStr[80];
 
 	const std::uint32_t frequencyHz = atof(argv[1])*1e6;
@@ -211,7 +226,7 @@ int main(int argc, char *argv[])
 
 	std::int16_t* iq = new std::int16_t[bufferSize];
 
-	for(int ii = 0; ii < 10; ii++)
+	for(std::uint8_t ii = 0; ii < 10; ii++)
 	{
 		memset(iq, 0, bufferSize*sizeof(std::int16_t));
 
@@ -236,14 +251,7 @@ int main(int argc, char *argv[])
 		packet.numSamples = meta.actual_count;
 		packet.sampleStartTime = meta.timestamp;
 
-		// current date/time based on current system
-		time_t now = time(0);
-
-		// convert now to UTC time
-		tm *utc = gmtime(&now);
-
-		strftime(datetimeStr, sizeof(datetimeStr), "%Y_%m_%d_%H_%M_%S", utc);
-		snprintf(filenameStr, sizeof(filenameStr), "%s_%04d.iq", datetimeStr, ii);
+		getFilenameStr(filenameStr, ii);
 
 		std::ofstream fout(filenameStr);
 	    	fout.write((char*)&packet, sizeof(packet));
