@@ -49,8 +49,8 @@ int main(const int argc, const char *argv[])
 	bladerf_serial serNo;
 	IqPacket packet;
 	char filenameStr[80];
-	const std::int16_t INT12_MAX = 2047;
-	const std::int16_t INT12_MIN = -2048;
+	const std::int16_t SAMP_MAX = 2047;
+	const std::int16_t SAMP_MIN = -2048;
 	bool saturated = false;
 	std::uint32_t overrunCounter = 0;
 
@@ -306,9 +306,9 @@ int main(const int argc, const char *argv[])
 			std::cout << "Received " << meta.actual_count << std::endl;
 
 			// Look for instances of saturating to max positive value
-			std::vector<std::int16_t>::iterator maxVal = std::find(std::execution::par_unseq, std::begin(iq_vec), std::end(iq_vec), INT12_MAX);
+			std::vector<std::int16_t>::iterator maxVal = std::find(std::execution::par_unseq, std::begin(iq_vec), std::end(iq_vec), SAMP_MAX);
 			// Look for instances of saturating to max negative value
-			std::vector<std::int16_t>::iterator minVal = std::find(std::execution::par_unseq, std::begin(iq_vec), std::end(iq_vec), INT12_MIN);
+			std::vector<std::int16_t>::iterator minVal = std::find(std::execution::par_unseq, std::begin(iq_vec), std::end(iq_vec), SAMP_MIN);
 
 			saturated = (maxVal != std::end(iq_vec)) || (minVal != std::end(iq_vec));
 		}
@@ -324,7 +324,7 @@ int main(const int argc, const char *argv[])
 
 		currentTime = std::chrono::system_clock::now();
 	}
-	while((currentTime - startTime) / std::chrono::seconds(1) <= collectionDuration);
+	while(((currentTime - startTime) / std::chrono::milliseconds(1) * 1e-3) <= collectionDuration);
 
 	// Disable the device
 
