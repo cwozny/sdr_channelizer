@@ -15,8 +15,11 @@
 
 void getFilenameStr(char* filenameStr)
 {
+	// Get current time
 	const std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
+	// Convert current time from chrono to time_t which goes down to second precision
 	const std::time_t tt = std::chrono::system_clock::to_time_t(now);
+	// Convert back to chrono so that we have a current time rounded to seconds
 	const std::chrono::system_clock::time_point nowSec = std::chrono::system_clock::from_time_t(tt);
 	tm utc_tm = *gmtime(&tt);
 
