@@ -306,8 +306,13 @@ int main(const int argc, const char *argv[])
 			std::cout << "Received " << meta.actual_count << std::endl;
 
 			// Look for instances of saturating to min or max value
+#ifdef __linux__
 			const auto [minSamp, maxSamp] = std::minmax_element(std::execution::par_unseq, std::begin(iq_vec), std::end(iq_vec));
-
+#elif __APPLE__
+			const auto [minSamp, maxSamp] = std::minmax_element(std::begin(iq_vec), std::end(iq_vec));
+#else
+#error "Unsupported operating system!"
+#endif
 			saturated = (((*minSamp) <= SAMP_MIN) || ((*maxSamp) >= SAMP_MAX));
 		}
 
