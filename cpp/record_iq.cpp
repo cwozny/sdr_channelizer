@@ -163,9 +163,9 @@ int main(int argc, char *argv[])
 	* bladerf_sync_tx call. Similarly, samples will not be available to
 	* RX via bladerf_sync_rx() until a block of `buffer_size` samples has been
 	* received. */
-	const std::uint32_t num_buffers = 16;
-	const std::uint32_t buffer_size = 32768; /* Must be a multiple of 1024 */
-	const std::uint32_t num_transfers = 8;
+	const std::uint32_t num_buffers = 4;
+	const std::uint32_t buffer_size = 512 * 1024; /* Must be a multiple of 1024 */
+	const std::uint32_t num_transfers = 2;
 	const std::uint32_t timeout_ms = 3500;
 
 	/* Configure both the device's x1 RX and TX channels for use with the
