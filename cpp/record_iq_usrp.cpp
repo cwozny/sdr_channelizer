@@ -46,6 +46,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 {
 	uhd::set_thread_priority_safe();
 
+	std::int32_t status = EXIT_SUCCESS;
 	std::string device_args("");
 	std::string subdev("A:A");
 	std::string ant("RX2");
@@ -116,5 +117,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 
 	usrp->set_rx_antenna(ant);
 
-	return EXIT_SUCCESS;
+	std::cout << "There were " << overrunCounter << " overruns." << std::endl;
+
+	return status;
 }
