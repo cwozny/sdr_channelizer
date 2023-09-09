@@ -13,10 +13,11 @@
 #include <fstream>
 #include <chrono>
 
-void getFilenameStr(char* filenameStr, std::uint8_t ii)
+void getFilenameStr(char* filenameStr)
 {
-	std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
-	time_t tt = std::chrono::system_clock::to_time_t(now);
+	const std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
+	const std::time_t tt = std::chrono::system_clock::to_time_t(now);
+	const std::chrono::system_clock::time_point nowSec = std::chrono::system_clock::from_time_t(tt);
 	tm utc_tm = *gmtime(&tt);
 
 	std::uint16_t year  = utc_tm.tm_year + 1900;
@@ -25,8 +26,9 @@ void getFilenameStr(char* filenameStr, std::uint8_t ii)
 	std::uint8_t hour   = utc_tm.tm_hour;
 	std::uint8_t minute = utc_tm.tm_min;
 	std::uint8_t second = utc_tm.tm_sec;
+	std::uint16_t millisecond = (now-nowSec)/std::chrono::milliseconds(1);
 
-	snprintf(filenameStr, 80, "%04d_%02d_%02d_%02d_%02d_%02d_%03d.iq", year, month, day, hour, minute, second, ii);
+	snprintf(filenameStr, 80, "%04d_%02d_%02d_%02d_%02d_%02d_%03d.iq", year, month, day, hour, minute, second, millisecond);
 }
 
 int main(int argc, char *argv[])
@@ -48,6 +50,7 @@ int main(int argc, char *argv[])
 	std::uint32_t receivedSampleRate = 0;
 	const std::int32_t rxGain = atoi(argv[4]);
 	const float dwellDuration = atof(argv[5]);
+	const float collectionDuration = atof(argv[6]);
 
 	/* Initialize the information used to identify the desired device
 	* to all wildcard (i.e., "any device") values */
@@ -226,7 +229,10 @@ int main(int argc, char *argv[])
 
 	std::int16_t* iq = new std::int16_t[bufferSize];
 
-	for(std::uint8_t ii = 0; ii < 10; ii++)
+	const std::chrono::system_clock::time_point startTime = std::chrono::system_clock::now();
+	std::chrono::system_clock::time_point currentTime = std::chrono::system_clock::now();
+
+	while((currentTime - startTime) / std::chrono::seconds(1) <= collectionDuration)
 	{
 		memset(iq, 0, bufferSize*sizeof(std::int16_t));
 
@@ -251,12 +257,14 @@ int main(int argc, char *argv[])
 		packet.numSamples = meta.actual_count;
 		packet.sampleStartTime = meta.timestamp;
 
-		getFilenameStr(filenameStr, ii);
+		getFilenameStr(filenameStr);
 
 		std::ofstream fout(filenameStr);
 	    	fout.write((char*)&packet, sizeof(packet));
 	    	fout.write((char*)iq, 2*meta.actual_count*sizeof(std::int16_t));
 	    	fout.close();
+
+		currentTime = std::chrono::system_clock::now();
     	}
 
 	status = bladerf_enable_module(dev, BLADERF_RX, false);
