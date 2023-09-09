@@ -34,3 +34,7 @@
 # MATLAB
 *.asv
 *.mat
+
+# Misc
+*.avi
+*.iq
