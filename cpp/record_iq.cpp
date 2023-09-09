@@ -32,6 +32,7 @@ int main(int argc, char *argv[])
 	bladerf_metadata meta;
 	bladerf_channel channel = BLADERF_CHANNEL_RX(0);
 	struct bladerf_version version;
+	bladerf_serial serNo;
 	IqPacket packet;
 	char datetimeStr[80];
 	char filenameStr[80];
@@ -82,6 +83,10 @@ int main(int argc, char *argv[])
 	strncpy(packet.fwVersion, version.describe, sizeof(packet.fwVersion));
 
 	std::cout << "Firmware version: " << packet.fwVersion << std::endl;
+	
+	bladerf_get_serial_struct(dev, &serNo);
+	
+	std::cout << "Using " << bladerf_get_board_name(dev) << " serial number " << serNo.serial << std::endl;
 
 	status = bladerf_set_frequency(dev, channel, frequencyHz);
 
