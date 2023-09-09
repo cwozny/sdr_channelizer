@@ -47,6 +47,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 	uhd::set_thread_priority_safe();
 
 	std::int32_t status = EXIT_SUCCESS;
+	uhd::rx_metadata_t meta;
 	std::string device_args("");
 	std::string subdev("A:A");
 	std::string ant("RX2");
@@ -117,6 +118,110 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 	std::cout << "Gain = " << rxGain << " dB" << std::endl;
 
 	usrp->set_rx_antenna(ant);
+
+	// Compute the requested number of samples and buffer size
+
+	const std::uint32_t sampleLength = dwellDuration*receivedSampleRate;
+	const std::uint32_t bufferSize = 2*sampleLength;
+
+	// Set up the configuration parameters necessary to receive samples with the device
+
+    // create a receive streamer
+    uhd::stream_args_t stream_args("sc16","sc16"); // 16-bit integers
+    uhd::rx_streamer::sptr rx_stream = usrp->get_rx_stream(stream_args);
+
+    // setup streaming
+    uhd::stream_cmd_t stream_cmd(uhd::stream_cmd_t::STREAM_MODE_NUM_SAMPS_AND_DONE);
+    stream_cmd.num_samps  = sampleLength;
+    stream_cmd.stream_now = true;
+    rx_stream->issue_stream_cmd(stream_cmd);
+
+	// Specify the endianness of the recording
+
+	if constexpr (std::endian::native == std::endian::big)
+	{
+		packet.endianness = 0x00000000;
+	}
+	else if constexpr (std::endian::native == std::endian::little)
+	{
+		packet.endianness = 0x01010101;
+	}
+	else
+	{
+		packet.endianness = 0xFFFFFFFF;
+	}
+
+	// Set information about the recording for data analysis purposes
+
+	packet.frequencyHz = frequencyHz;
+	packet.bandwidthHz = receivedBandwidthHz;
+	packet.sampleRate = receivedSampleRate;
+	packet.numSamples = sampleLength;
+	packet.baseTimeMs = std::chrono::system_clock::now().time_since_epoch() / std::chrono::milliseconds(1);
+
+	// Allocate the host buffer the device will be streaming to
+
+	std::vector<std::int16_t> iq_vec;
+	iq_vec.resize(bufferSize, 0);
+	std::int16_t* iq = iq_vec.data();
+
+	const std::chrono::system_clock::time_point startTime = std::chrono::system_clock::now();
+	std::chrono::system_clock::time_point currentTime;
+
+	do
+	{
+		// If we're saturated, then drop the receive gain down by 1 dB
+		if (saturated)
+		{
+			usrp->set_rx_gain(--rxGain);
+			rxGain = usrp->get_rx_gain();
+
+			std::cout << "Gain = " << rxGain << " dB" << std::endl;
+		}
+
+		packet.rxGain = rxGain;
+		saturated = false;
+
+		memset(iq, 0, bufferSize*sizeof(std::int16_t));
+
+		memset(&meta, 0, sizeof(meta));
+		size_t num_rx_samps = rx_stream->recv(&iq_vec.front(), iq_vec.size(), meta, 5.0, true);
+
+		if (meta.error_code == uhd::rx_metadata_t::ERROR_CODE_OVERFLOW)
+		{
+			std::cout << "Overrun detected in scheduled RX. " << num_rx_samps << " valid samples were read." << std::endl;
+			overrunCounter++;
+		}
+		else if (meta.error_code != uhd::rx_metadata_t::ERROR_CODE_NONE)
+		{
+			std::cout << "Scheduled RX failed: " << meta.strerror() << std::endl;
+		}
+		else
+		{
+			// Look for instances of saturating to max positive value
+			std::vector<std::int16_t>::iterator maxVal = std::find(std::execution::par_unseq, std::begin(iq_vec), std::end(iq_vec), INT12_MAX);
+			// Look for instances of saturating to max negative value
+			std::vector<std::int16_t>::iterator minVal = std::find(std::execution::par_unseq, std::begin(iq_vec), std::end(iq_vec), INT12_MIN);
+
+			saturated = (maxVal != std::end(iq_vec)) || (minVal != std::end(iq_vec));
+		}
+
+		stream_cmd.stream_mode = uhd::stream_cmd_t::STREAM_MODE_STOP_CONTINUOUS;
+		rx_stream->issue_stream_cmd(stream_cmd);
+
+		packet.numSamples = num_rx_samps;
+		packet.sampleStartTime = 0;
+
+		getFilenameStr(filenameStr);
+
+		std::ofstream fout(filenameStr);
+		fout.write((char*)&packet, sizeof(packet));
+		fout.write((char*)iq, 2*num_rx_samps*sizeof(std::int16_t));
+		fout.close();
+
+		currentTime = std::chrono::system_clock::now();
+	}
+	while((currentTime - startTime) / std::chrono::seconds(1) <= collectionDuration);
 
 	std::cout << "There were " << overrunCounter << " overruns." << std::endl;
 
