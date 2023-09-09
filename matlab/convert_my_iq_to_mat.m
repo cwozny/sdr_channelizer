@@ -2,7 +2,7 @@
 
 clc
 
-fprintf('%s - Clearing everything out\n', datestr(now))
+fprintf('%s - Clearing everything out\n', datetime)
 
 clear all
 close all
@@ -14,18 +14,18 @@ listing = dir(uigetdir('/'));
 for ii = 1:length(listing)
     if contains(listing(ii).name,'.iq')
 
-        fprintf('%s - Reading %s\n', datestr(now), listing(ii).name)
+        fprintf('%s - Reading %s\n', datetime, listing(ii).name)
 
         fid = fopen(fullfile(listing(ii).folder,listing(ii).name),"r");
 
         endianness = fread(fid,1,'uint32=>uint32');
 
         if endianness == 0x00000000
-            fprintf('%s - Reading in big endian file\n', datestr(now))
+            fprintf('%s - Reading in big endian file\n', datetime)
         elseif endianness == 0x01010101
-            fprintf('%s - Reading in little endian file\n', datestr(now))
+            fprintf('%s - Reading in little endian file\n', datetime)
         else
-            warning('%s - Reading in file with unknown endianness\n', datestr(now))
+            warning('%s - Reading in file with unknown endianness\n', datetime)
         end
 
         linkSpeed = fread(fid,1,'uint32=>uint32');
@@ -50,7 +50,7 @@ for ii = 1:length(listing)
 
         %% Saving data
 
-        fprintf('%s - Saving I/Q\n', datestr(now))
+        fprintf('%s - Saving I/Q\n', datetime)
 
         [filepath,name,ext] = fileparts(listing(ii).name);
 
@@ -63,7 +63,7 @@ for ii = 1:length(listing)
 
         %% Done
 
-        fprintf('%s - Done\n', datestr(now))
+        fprintf('%s - Done\n', datetime)
     end
 
 end

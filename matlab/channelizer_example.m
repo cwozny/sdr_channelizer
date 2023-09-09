@@ -2,14 +2,14 @@
 
 clc
 
-fprintf('%s - Clearing everything out\n', datestr(now))
+fprintf('%s - Clearing everything out\n', datetime)
 
 clear all
 close all
 
 %% Load data
 
-fprintf('%s - Loading data\n', datestr(now))
+fprintf('%s - Loading data\n', datetime)
 
 load data.mat
 
@@ -17,7 +17,7 @@ iq = iq';
 
 %% Channelize
 
-fprintf('%s - Channelizing data\n', datestr(now))
+fprintf('%s - Channelizing data\n', datetime)
 
 numBands = fs*1e-6; % 1 MHz channelizer bins
 

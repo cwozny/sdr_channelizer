@@ -2,7 +2,7 @@
 
 clc
 
-fprintf('%s - Clearing everything out\n', datestr(now))
+fprintf('%s - Clearing everything out\n', datetime)
 
 clear all
 close all
@@ -15,7 +15,7 @@ for ii = 1:length(listing)
 
     if contains(listing(ii).name,'.bin')
 
-        fprintf('%s - Reading %s\n', datestr(now), listing(ii).name)
+        fprintf('%s - Reading %s\n', datetime, listing(ii).name)
 
         fileinfo = sscanf(listing(ii).name,"%dM_%d_MHz_%d.bin");
 
@@ -31,7 +31,7 @@ for ii = 1:length(listing)
         
         %% Convert
         
-        fprintf('%s - Convert to I/Q\n', datestr(now))
+        fprintf('%s - Convert to I/Q\n', datetime)
         
         iq = iq(1,:) + 1j*iq(2,:);
 
@@ -41,7 +41,7 @@ for ii = 1:length(listing)
         
         %% Saving data
         
-        fprintf('%s - Saving I/Q\n', datestr(now))
+        fprintf('%s - Saving I/Q\n', datetime)
         
         [filepath,name,ext] = fileparts(listing(ii).name);
         
@@ -54,7 +54,7 @@ for ii = 1:length(listing)
         
         %% Done
         
-        fprintf('%s - Done\n', datestr(now))
+        fprintf('%s - Done\n', datetime)
 
     end
 
