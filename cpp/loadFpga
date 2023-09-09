@@ -1,2 +1,2 @@
-bladeRF-cli -f ~/workarea/bladeRF_fw_latest.img
-bladeRF-cli -l ~/workarea/hostedxA5-latest.rbf
+bladeRF-cli -f ~/workarea/bladeRF_fw_2.4.0.img
+bladeRF-cli -l ~/workarea/hostedxA5-0.14.0.rbf
