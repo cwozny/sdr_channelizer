@@ -303,6 +303,8 @@ int main(const int argc, const char *argv[])
 		}
 		else
 		{
+			std::cout << "Received " << meta.actual_count << std::endl;
+
 			// Look for instances of saturating to max positive value
 			std::vector<std::int16_t>::iterator maxVal = std::find(std::execution::par_unseq, std::begin(iq_vec), std::end(iq_vec), INT12_MAX);
 			// Look for instances of saturating to max negative value
