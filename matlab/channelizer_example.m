@@ -11,7 +11,14 @@ close all
 
 fprintf('%s - Loading data\n', datetime)
 
-load data.mat
+[file,path] = uigetfile('*.mat');
+
+load(fullfile(path,file))
+
+iq = double(iq);
+%iq = iq / 32768; % This is the max for the USRP b200mini
+iq = iq / 2048; % This is the max for the bladeRF 2.0 micro
+iq = iq(1,:) + 1j*iq(2,:);
 
 iq = iq';
 
@@ -26,7 +33,7 @@ channelizer = dsp.Channelizer(numBands);
 duration = 5e-3;
 samples = duration*fs;
 
-vidObj = VideoWriter('blah');
+vidObj = VideoWriter('blah','MPEG-4');
 
 open(vidObj)
 
