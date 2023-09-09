@@ -4,21 +4,21 @@
 #include <vector>
 #include <Eigen/QR>
 
-void polyfit(const std::vector<double> &t, const std::vector<double> &v, std::vector<double> &coeff, const int order)
+void polyfit(const std::vector<double> &t, const std::vector<double> &v, std::vector<double> &coeff)
 {
 	// Create Matrix Placeholder of size n x k, n = number of datapoints, k = order of polynomial, for example k = 3 for cubic polynomial
-	Eigen::MatrixXd T(t.size(), order + 1);
+	Eigen::MatrixXd T(t.size(), 3);
 	Eigen::VectorXd V = Eigen::VectorXd::Map(&v.front(), v.size());
-	Eigen::VectorXd result;
+	Eigen::Vector3d result;
 
 	// check to make sure inputs are correct
 	assert(t.size() == v.size());
-	assert(t.size() >= order + 1);
+	assert(t.size() >= 3);
 
 	// Populate the matrix
 	for(size_t i = 0 ; i < t.size(); ++i)
 	{
-		for(size_t j = 0; j < order + 1; ++j)
+		for(size_t j = 0; j < 3; ++j)
 		{
 			T(i, j) = pow(t.at(i), j);
 		}
@@ -26,9 +26,9 @@ void polyfit(const std::vector<double> &t, const std::vector<double> &v, std::ve
 
 	// Solve for linear least square fit
 	result  = T.householderQr().solve(V);
-	coeff.resize(order+1);
+	coeff.resize(3);
 
-	for (int k = 0; k < order+1; k++)
+	for (int k = 0; k < 3; k++)
 	{
 		coeff[k] = result[k];
 	}
@@ -214,7 +214,7 @@ int main(const int argc, const char* argv[])
 
 	// placeholder for storing polynomial coefficient
         std::vector<double> p;
-	polyfit(toa, snr, p, 2);
+	polyfit(toa, snr, p);
 
 	const double a = p[2];
 	const double b = p[1];
