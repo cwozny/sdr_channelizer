@@ -9,8 +9,8 @@
 #include <iostream>
 #include <fstream>
 
-const unsigned int sampleLength = 250000;
-const unsigned int bufferSize = 2*sampleLength;
+const std::uint32_t sampleLength = 250000;
+const std::uint32_t bufferSize = 2*sampleLength;
 
 struct IqPacket
 {
@@ -19,7 +19,7 @@ struct IqPacket
 	std::uint32_t bandwidthHz;
 	std::uint32_t sampleRate;
 	std::uint32_t rxGain;
-	std::int16_t iq[bufferSize];
+	std::uint32_t numSamples;
 };
 
 int main(int argc, char *argv[])
@@ -160,29 +160,32 @@ int main(int argc, char *argv[])
 		bladerf_close(dev);
 	}
 	
+	if constexpr (std::endian::native == std::endian::big)
+	{
+		packet.endianness = 0x00000000;
+	}
+	else if constexpr (std::endian::native == std::endian::little)
+	{
+		packet.endianness = 0x01010101;
+	}
+	else
+	{
+		packet.endianness = 0xFFFFFFFF;
+	}
+
+	packet.frequencyHz = frequencyHz;
+	packet.bandwidthHz = receivedBandwidthHz;
+	packet.sampleRate = receivedSampleRate;
+	packet.rxGain = rxGain;
+	packet.numSamples = sampleLength;
+
+	std::int16_t* iq = new std::int16_t[bufferSize];
+	
 	for(int ii = 0; ii < 10; ii++)
 	{
-		memset(&packet.iq, 0, bufferSize*sizeof(std::int16_t));
-		
-		if constexpr (std::endian::native == std::endian::big)
-		{
-			packet.endianness = 0x00000000;
-		}
-		else if constexpr (std::endian::native == std::endian::little)
-		{
-			packet.endianness = 0x01010101;
-		}
-		else
-		{
-			packet.endianness = 0xFFFFFFFF;
-		}
+		memset(iq, 0, bufferSize*sizeof(std::int16_t));
 
-		packet.frequencyHz = frequencyHz;
-		packet.bandwidthHz = receivedBandwidthHz;
-		packet.sampleRate = receivedSampleRate;
-		packet.rxGain = rxGain;
-
-		status = bladerf_sync_rx(dev, &packet.iq, sampleLength, &meta, 5000);
+		status = bladerf_sync_rx(dev, iq, sampleLength, &meta, 5000);
 
 		if (status == 0)
 		{
@@ -204,6 +207,7 @@ int main(int argc, char *argv[])
 
 		std::ofstream fout(filenameStr);
 	    	fout.write((char*)&packet, sizeof(packet));
+	    	fout.write((char*)iq, bufferSize*sizeof(std::int16_t));
 	    	fout.close();
     	}
 
