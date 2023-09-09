@@ -237,19 +237,20 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 		if (badSamples == false)
 		{
 			// Look for instances of saturating to min or max value
-			const auto [minSamp, maxSamp] = std::minmax_element(std::execution::par_unseq, std::begin(iq_vec), std::end(iq_vec));
+			//const auto [minSamp, maxSamp] = std::minmax_element(std::execution::par_unseq, std::begin(iq_vec), std::end(iq_vec));
 
-			saturated = (((*minSamp) <= SAMP_MIN) || ((*maxSamp) >= SAMP_MAX));
-			
+			//saturated = (((*minSamp) <= SAMP_MIN) || ((*maxSamp) >= SAMP_MAX));
+
 			// Compute the noise floor as the median of the magnitude of the I/Q data
 			float NOISE_FLOOR = 0.1; // TODO: median(mag)
 			float SNR_THRESHOLD = 12; // dB
-			
+
 			// Compute the magnitude threshold to declare a pulse
 			float PULSE_THRESHOLD = NOISE_FLOOR * pow(10,SNR_THRESHOLD/1);
-			
+
 			bool pulseActive = false; // keeps track of whether pulse is active
 			bool pulseSaturated = false; // keeps track of whether pulse was ever saturated
+			std::uint32_t toa = 0; // this is sufficient as long as we don't ever record more than ~35 seconds of samples at 60 Msps in one buffer
 
 			// Loop through I/Q and generate PDWs
 			for(int jj = 0; jj < num_accum_samps; jj++)
@@ -257,7 +258,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 				// Look for a leading edge
 				if (pulseActive == false)
 				{
-					if (abs(iq(jj)) >= PULSE_THRESHOLD)
+					if (std::abs(iq[jj]) >= PULSE_THRESHOLD)
 					{
 						pulseActive = true; // a pulse is now active
 						toa = jj; // initialize the time of arrival to current index
@@ -266,46 +267,46 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 				}
 				else // Look for a trailing edge now that pulse is active
 				{
-					if mag(jj) <= PULSE_THRESHOLD // Declare a trailing edge
+					if (std::abs(iq[jj]) <= PULSE_THRESHOLD) // Declare a trailing edge
 					{
 						pulseActive = false; // the pulse is no longer active
 
 						// compute the UTC time of the time of arrival of the pulse
-						thisToa = (toa/fs)+(sampleStartTime - firstFileSampleTime);
+						//thisToa = (toa/fs)+(sampleStartTime - firstFileSampleTime);
 
 						// compute the amplitude as the median magnitude over the entire pulse
-						thisAmp = median(mag(toa:jj));
+						//thisAmp = median(mag(toa:jj));
 
 						// compute the SNR for this pulse given the
 						// amplitude and noise floor for this channelizer bin
-						thisSnr = 10*log10(thisAmp/NOISE_FLOOR);
+						//thisSnr = 10*log10(thisAmp/NOISE_FLOOR);
 
 						// compute the pulse width as the number of samples
 						// this pulse was active for divided by the sampling
 						// rate for this channelizer bin
-						thisPw = (jj-toa)/fs;
+						//thisPw = (jj-toa)/fs;
 
 						// compute the median phase difference of this pulse
 						// in order to compute the frequency
-						phaseDiff = diff(phase(toa:jj));
-						phaseDiff(phaseDiff < -180) = phaseDiff(phaseDiff < -180) + 360;
-						phaseDiff(phaseDiff > 180) = phaseDiff(phaseDiff > 180) - 360;
-						medPhaseDiff = median(phaseDiff);
+						//phaseDiff = diff(phase(toa:jj));
+						//phaseDiff(phaseDiff < -180) = phaseDiff(phaseDiff < -180) + 360;
+						//phaseDiff(phaseDiff > 180) = phaseDiff(phaseDiff > 180) - 360;
+						//medPhaseDiff = median(phaseDiff);
 
 						// compute the frequency by finding the period given
 						// the median phase difference and then offset it
 						// from the center frequency of this channelizer bin
-						thisFreq = fc+(fs/(360/medPhaseDiff));
+						//thisFreq = fc+(fs/(360/medPhaseDiff));
 
-						pdw.toa = [pdw.toa; thisToa];
-						pdw.freq = [pdw.freq; thisFreq];
-						pdw.pw = [pdw.pw; thisPw];
-						pdw.snr = [pdw.snr; thisSnr];
-						pdw.sat = [pdw.sat; pulseSaturated];
+						//pdw.toa = [pdw.toa; thisToa];
+						//pdw.freq = [pdw.freq; thisFreq];
+						//pdw.pw = [pdw.pw; thisPw];
+						//pdw.snr = [pdw.snr; thisSnr];
+						//pdw.sat = [pdw.sat; pulseSaturated];
 					}
 					else // Otherwise we're still measuring a pulse
 					{
-						if (abs(iq[jj].real()) >= SAMP_MAX || abs(iq[jj].imag()) >= 0.9999)
+						if (abs(iq[jj].real()) >= SAMP_MAX || abs(iq[jj].imag()) >= SAMP_MAX)
 						{
 							pulseSaturated = true;
 						}
