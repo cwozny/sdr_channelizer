@@ -216,6 +216,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 
 				default:
 					std::cout << "Got error code: " << meta.strerror() << std::endl;
+					break;
 			}
 		}
 
