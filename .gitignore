@@ -37,6 +37,7 @@
 
 # Misc
 *.avi
+*.mp4
 *.iq
 *.png
 *.DS_Store
