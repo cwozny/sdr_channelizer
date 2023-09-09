@@ -141,6 +141,9 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 	const std::uint16_t pulseWidthSamps = chipWidthSec*BARKER_CODE_SYMBOLS*receivedSampleRate;
 	const std::uint16_t chipWidthSamps = chipWidthSec*receivedSampleRate;
 
+	std::cout << "Chip width = " << (float)(chipWidthSamps)/(float)(receivedSampleRate)*1e6 << " us" << std::endl;
+	std::cout << "Pulse width = " << (float)(pulseWidthSamps)/(float)(receivedSampleRate)*1e6 << " us" << std::endl;
+
 	// Set the time on the device
 
 	const double timeInSecs = std::chrono::system_clock::now().time_since_epoch() / std::chrono::nanoseconds(1) * 1e-9;
@@ -152,7 +155,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 	// create a transmit & receive streamer
 	uhd::stream_args_t rx_stream_args("sc16","sc12"); // 16-bit integers on host, 12-bit over-the-wire
 	uhd::rx_streamer::sptr rx_stream = usrp->get_rx_stream(rx_stream_args);
-	uhd::stream_args_t tx_stream_args("fc32","sc12"); // 32-bit complex float on host, 12-bit over-the-wire
+	uhd::stream_args_t tx_stream_args("sc16","sc12"); // 16-bit integers on host, 12-bit over-the-wire
 	uhd::tx_streamer::sptr tx_stream = usrp->get_tx_stream(tx_stream_args);
 	const std::uint32_t maxSampsPerBuffer = rx_stream->get_max_num_samps();
 
@@ -198,15 +201,15 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 	const std::chrono::system_clock::time_point startTime = std::chrono::system_clock::now();
 	std::chrono::system_clock::time_point currentTime;
 
-	const float symbols[BARKER_CODE_SYMBOLS] = {+1,+1,+1,+1,+1,+1,+1,+1,+1,+1,+1,+1,+1}; // no phase modulation
-	//const float symbols[BARKER_CODE_SYMBOLS] = {+1,+1,+1,+1,+1,-1,-1,+1,+1,-1,+1,-1,+1}; // 13-bit Barker code symbols
-	std::vector<std::complex<float>> txBuffVec;
+	const std::int16_t symbols[BARKER_CODE_SYMBOLS] = {SAMP_MAX,SAMP_MAX,SAMP_MAX,SAMP_MAX,SAMP_MAX,SAMP_MAX,SAMP_MAX,SAMP_MAX,SAMP_MAX,SAMP_MAX,SAMP_MAX,SAMP_MAX,SAMP_MAX}; // no phase modulation
+	//const std::int16_t symbols[BARKER_CODE_SYMBOLS] = {SAMP_MAX,SAMP_MAX,SAMP_MAX,SAMP_MAX,SAMP_MAX,SAMP_MIN,SAMP_MIN,SAMP_MAX,SAMP_MAX,SAMP_MIN,SAMP_MAX,SAMP_MIN,SAMP_MAX}; // 13-bit Barker code symbols
+	std::vector<std::complex<std::int16_t>> txBuffVec;
 
 	for(int ii = 0; ii < BARKER_CODE_SYMBOLS; ii++)
 	{
 		for(int jj = 0; jj < chipWidthSamps; jj++)
 		{
-			txBuffVec.push_back(std::complex<float>(0,symbols[ii]));
+			txBuffVec.push_back(std::complex<std::int16_t>(0,symbols[ii]));
 		}
 	}
 
