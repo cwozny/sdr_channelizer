@@ -189,10 +189,10 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 		stream_cmd.stream_mode = uhd::stream_cmd_t::STREAM_MODE_START_CONTINUOUS;
 		rx_stream->issue_stream_cmd(stream_cmd);
 
-		while(num_accum_samps < iq_vec.size())
+		while(num_accum_samps < sampleLength)
 		{
-			//std::cout << "Start filling in at " << &iq_vec.front()+num_accum_samps << " and go to " << iq_vec.size()-num_accum_samps << std::endl;
-			size_t num_rx_samps = rx_stream->recv(&iq_vec.front()+num_accum_samps, iq_vec.size()-num_accum_samps, meta, 5.0, true);
+			size_t num_rx_samps = rx_stream->recv(&iq_vec.front()+(2*num_accum_samps), iq_vec.size()-(2*num_accum_samps), meta, 5.0, true);
+
 			num_accum_samps += num_rx_samps;
 
 			// Handle streaming error codes
