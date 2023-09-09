@@ -174,14 +174,17 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 
 	if constexpr (std::endian::native == std::endian::big)
 	{
+		txPacket.endianness = 0x00000000;
 		rxPacket.endianness = 0x00000000;
 	}
 	else if constexpr (std::endian::native == std::endian::little)
 	{
+		txPacket.endianness = 0x01010101;
 		rxPacket.endianness = 0x01010101;
 	}
 	else
 	{
+		txPacket.endianness = 0xFFFFFFFF;
 		rxPacket.endianness = 0xFFFFFFFF;
 	}
 
@@ -191,6 +194,11 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 	rxPacket.bandwidthHz = receivedBandwidthHz;
 	rxPacket.sampleRate = receivedSampleRate;
 	rxPacket.numSamples = sampleLength;
+
+	txPacket.frequencyHz = frequencyHz;
+	txPacket.bandwidthHz = receivedBandwidthHz;
+	txPacket.sampleRate = receivedSampleRate;
+	txPacket.numSamples = sampleLength;
 
 	// Allocate the host buffer the device will be streaming to
 
@@ -223,6 +231,16 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 
 	txMeta.time_spec = usrp->get_time_now() + uhd::time_spec_t(0.05);
 	size_t num_accum_samps = tx_stream->send(&txBuffVec.front(), txBuffVec.size(), txMeta);
+
+	txPacket.numSamples = num_accum_samps;
+	txPacket.sampleStartTime = txMeta.time_spec.get_real_secs();
+
+	getFilenameStr(filenameStr);
+
+	std::ofstream tx_fout(filenameStr);
+	tx_fout.write((char*)&txPacket, sizeof(txPacket));
+	tx_fout.write((char*)txBuffVec.data(), 2*num_accum_samps*sizeof(std::int16_t));
+	tx_fout.close();
 
 	//std::cout << std::setprecision(20) << "Transmitting " << num_accum_samps << " samples at " << txMeta.time_spec.get_real_secs() << std::endl;
 
@@ -268,10 +286,10 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 
 	getFilenameStr(filenameStr);
 
-	std::ofstream fout(filenameStr);
-	fout.write((char*)&rxPacket, sizeof(rxPacket));
-	fout.write((char*)iq, 2*num_accum_samps*sizeof(std::int16_t));
-	fout.close();
+	std::ofstream rx_fout(filenameStr);
+	rx_fout.write((char*)&rxPacket, sizeof(rxPacket));
+	rx_fout.write((char*)iq, 2*num_accum_samps*sizeof(std::int16_t));
+	rx_fout.close();
 
 	// Disable the device
 
