@@ -9,9 +9,6 @@
 #include <iostream>
 #include <fstream>
 
-const std::uint32_t sampleLength = 2500000;
-const std::uint32_t bufferSize = 2*sampleLength;
-
 struct IqPacket
 {
 	std::uint32_t endianness;
@@ -33,12 +30,13 @@ int main(int argc, char *argv[])
 	char datetimeStr[80];
 	char filenameStr[80];
 
-	const unsigned int frequencyHz = atof(argv[1])*1e6;
-	const unsigned int requestedBandwidthHz = atoi(argv[2])*1e6;
-	unsigned int receivedBandwidthHz = 0;
-	const unsigned int requestedSampleRate = atoi(argv[3])*1e6;
-	unsigned int receivedSampleRate = 0;
-	const int rxGain = atoi(argv[4]);
+	const std::uint32_t frequencyHz = atof(argv[1])*1e6;
+	const std::uint32_t requestedBandwidthHz = atof(argv[2])*1e6;
+	std::uint32_t receivedBandwidthHz = 0;
+	const std::uint32_t requestedSampleRate = atof(argv[3])*1e6;
+	std::uint32_t receivedSampleRate = 0;
+	const std::int32_t rxGain = atoi(argv[4]);
+	const float dwellDuration = atof(argv[5]);
 
 	/* Initialize the information used to identify the desired device
 	* to all wildcard (i.e., "any device") values */
@@ -172,6 +170,9 @@ int main(int argc, char *argv[])
 	{
 		packet.endianness = 0xFFFFFFFF;
 	}
+	
+	const std::uint32_t sampleLength = dwellDuration*receivedSampleRate;
+	const std::uint32_t bufferSize = 2*sampleLength;
 
 	packet.frequencyHz = frequencyHz;
 	packet.bandwidthHz = receivedBandwidthHz;
