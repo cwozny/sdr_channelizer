@@ -17,6 +17,10 @@ pdw.snr = [];
 pdw.pw = [];
 pdw.saturated = [];
 
+M = 60; % 1 MHz channelizer bins for an Fs of 60e6
+
+channelizer = dsp.Channelizer(M);
+
 for ii = 1:length(listing)
     if contains(listing(ii).name,'.mat')
 
@@ -24,56 +28,85 @@ for ii = 1:length(listing)
 
         load(fullfile(listing(ii).folder,listing(ii).name))
 
-        iq = double(iq);
-        iq = iq/32768;
-        iq = iq(1,:) + 1j*iq(2,:);
+        iq = double(iq); % Convert from int16 to double
+        iq = iq/32768; % Normalize from -1 to 1
+        iq = iq(1,:) + 1j*iq(2,:); % Convert to complex
 
-        mag = abs(iq);
-        phase = rad2deg(angle(iq));
+        fprintf('%s - Channelizing data\n', datestr(now))
+
+        if length(iq) ~= size(iq,1)
+            % Convert from row vector to column vector. NOTE: Don't use the
+            % notation iq' here because that tranposes and conjugates.
+            iq = transpose(iq);
+        end
+
+        % Lop off excess samples to make length a multiple of the number of
+        % channelizer bins
+        lastSample = floor(length(iq)/M)*M;
+
+        iq(lastSample+1:end) = [];
+
+        iq_chan = channelizer(iq);
+
+        iq_chan = fftshift(iq_chan,2);
+
+        mag = abs(iq_chan);
+        fs_chan = fs/M;
+
+        binFreqs = centerFrequencies(channelizer,fs);
 
         fprintf('%s - Computing noise floor\n', datestr(now))
 
         nf = median(mag);
 
-        fprintf('%s - Generating PDWs\n', datestr(now))
-
-        SNR_THRESHOLD = 10 % dB
+        SNR_THRESHOLD = 25 % dB
         PULSE_THRESHOLD = nf*10^(SNR_THRESHOLD/10)
 
-        pulseActive = false;
-        saturated = false;
-        
-        for jj = 1:length(iq)
-            % Look for a leading edge
-            if ~pulseActive
-                if mag(jj) >= PULSE_THRESHOLD
-                    pulseActive = true;
-                    pw = 1;
-                    toa = jj;   
-                    amp = mag(jj);
-                    saturated = false;
+        fprintf('%s - Generating PDWs\n', datestr(now))
 
-                    if real(iq(jj)) >= 0.9999 || imag(iq(jj)) >= 0.9999
-                        saturated = true;
+        for bin = 1:M
+            iq = iq_chan(:,bin);
+
+            mag = abs(iq);
+            phase = rad2deg(angle(iq));
+
+            fc_chan = fc + binFreqs(bin);
+
+            pulseActive = false;
+            saturated = false;
+
+            for jj = 1:length(iq)
+                % Look for a leading edge
+                if ~pulseActive
+                    if mag(jj) >= PULSE_THRESHOLD(bin)
+                        pulseActive = true;
+                        pw = 1;
+                        toa = jj;   
+                        amp = mag(jj);
+                        saturated = false;
+
+                        if real(iq(jj)) >= 0.9999 || imag(iq(jj)) >= 0.9999
+                            saturated = true;
+                        end
                     end
-                end
-            else % Look for a trailing edge now that pulse is active
-                if mag(jj) <= PULSE_THRESHOLD % Declare a trailing edge
-                    pulseActive = false;
-                    pdw.t = [pdw.t; ((toa/fs)+sampleStartTime)];
-                    pdw.snr = [pdw.snr; 10*log10((amp/pw)/nf)];
-                    pdw.pw = [pdw.pw; pw/fs];
-                    pdw.saturated = [pdw.saturated; saturated];
+                else % Look for a trailing edge now that pulse is active
+                    if mag(jj) <= PULSE_THRESHOLD(bin) % Declare a trailing edge
+                        pulseActive = false;
+                        pdw.t = [pdw.t; ((toa/fs_chan)+sampleStartTime)];
+                        pdw.snr = [pdw.snr; 10*log10((amp/pw)/nf(bin))];
+                        pdw.pw = [pdw.pw; pw/fs_chan];
+                        pdw.saturated = [pdw.saturated; saturated];
 
-                    medPhaseDiff = median(diff(phase(toa:jj)));
+                        medPhaseDiff = median(diff(phase(toa:jj)));
 
-                    pdw.freq = [pdw.freq; fc+(fs/(360/medPhaseDiff))];
-                else % Otherwise we're still measuring a pulse
-                    pw = pw + 1;
-                    amp = amp + mag(jj);
+                        pdw.freq = [pdw.freq; fc_chan+(fs_chan/(360/medPhaseDiff))];
+                    else % Otherwise we're still measuring a pulse
+                        pw = pw + 1;
+                        amp = amp + mag(jj);
 
-                    if real(iq(jj)) >= 0.9999 || imag(iq(jj)) >= 0.9999
-                        saturated = true;
+                        if real(iq(jj)) >= 0.9999 || imag(iq(jj)) >= 0.9999
+                            saturated = true;
+                        end
                     end
                 end
             end
