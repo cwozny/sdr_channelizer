@@ -294,11 +294,11 @@ int main(const int argc, const char *argv[])
 
 		if (status != 0)
 		{
-			std::cout << "Scheduled RX failed: " << bladerf_strerror(status) << std::endl;
+			std::cout << "RX \"now\" failed: " << bladerf_strerror(status) << std::endl;
 		}
 		else if (meta.status & BLADERF_META_STATUS_OVERRUN)
 		{
-			std::cout << "Overrun detected in scheduled RX. " << meta.actual_count << " valid samples were read." << std::endl;
+			std::cout << "Overrun detected. " << meta.actual_count << " valid samples were read." << std::endl;
 			overrunCounter++;
 		}
 		else
