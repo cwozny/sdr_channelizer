@@ -7,6 +7,8 @@
 #include <boost/format.hpp>
 #include <boost/thread.hpp>
 
+#include "IqPacket.h"
+
 #include <cstring>
 #include <ctime>
 
@@ -19,17 +21,41 @@
 #include <iterator>
 #include <execution>
 
+#define BARKER_CODE_SYMBOLS 13
+
+void getFilenameStr(char* filenameStr)
+{
+	// Get current time
+	const std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
+	// Convert current time from chrono to time_t which goes down to second precision
+	const std::time_t tt = std::chrono::system_clock::to_time_t(now);
+	// Convert back to chrono so that we have a current time rounded to seconds
+	const std::chrono::system_clock::time_point nowSec = std::chrono::system_clock::from_time_t(tt);
+	tm utc_tm = *gmtime(&tt);
+
+	std::uint16_t year  = utc_tm.tm_year + 1900;
+	std::uint8_t month  = utc_tm.tm_mon + 1;
+	std::uint8_t day    = utc_tm.tm_mday;
+	std::uint8_t hour   = utc_tm.tm_hour;
+	std::uint8_t minute = utc_tm.tm_min;
+	std::uint8_t second = utc_tm.tm_sec;
+	std::uint16_t millisecond = (now-nowSec)/std::chrono::milliseconds(1);
+
+	snprintf(filenameStr, 80, "%04d_%02d_%02d_%02d_%02d_%02d_%03d.iq", year, month, day, hour, minute, second, millisecond);
+}
+
 int UHD_SAFE_MAIN(int argc, char *argv[])
 {
 	std::int32_t status = EXIT_SUCCESS;
-	uhd::rx_metadata_t meta;
+	uhd::rx_metadata_t rxMeta;
+	uhd::tx_metadata_t txMeta;
 	std::string device_args("");
-	std::string subdev("");
+	std::string subdev("A:A");
 	std::string ref("internal");
+	IqPacket rxPacket, txPacket;
 	char filenameStr[80];
 	const std::int16_t SAMP_MAX = 32736;
 	const std::int16_t SAMP_MIN = -32736;
-	bool saturated = false;
 	std::uint32_t overrunCounter = 0;
 
 	const std::uint32_t frequencyHz = atof(argv[1])*1e6;
@@ -41,6 +67,8 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 	std::int32_t txGain = atoi(argv[4]);
 	const float dwellDuration = atof(argv[5]);
 	const float collectionDuration = atof(argv[6]);
+	const float chipWidthSec = atof(argv[7]);
+	const float priSec = atof(argv[8]);
 
 	//create a usrp device
 
@@ -52,6 +80,10 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 	//always select the subdevice first, the channel mapping affects the other settings
 	usrp->set_rx_subdev_spec(subdev);
 	usrp->set_tx_subdev_spec(subdev);
+
+	std::cout << "FPGA version: " << rxPacket.fpgaVersion << std::endl;
+
+	std::cout << "Firmware version: " << rxPacket.fwVersion << std::endl;
 
 	uhd::dict<std::string, std::string> rx_info = usrp->get_usrp_rx_info();
 
@@ -80,7 +112,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 	usrp->set_rx_bandwidth(requestedBandwidthHz);
 	receivedBandwidthHz = usrp->get_rx_bandwidth();
 	std::cout << "Rx Bandwidth = " << receivedBandwidthHz*1e-6 << " MHz" << std::endl;
-	
+
 	usrp->set_tx_bandwidth(requestedBandwidthHz);
 	receivedBandwidthHz = usrp->get_tx_bandwidth();
 	std::cout << "Tx Bandwidth = " << receivedBandwidthHz*1e-6 << " MHz" << std::endl;
@@ -104,17 +136,24 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 	usrp->set_rx_antenna("RX2");
 	usrp->set_tx_antenna("TRX");
 
+	// Compute pulse duration in samples
+
+	const std::uint16_t pulseWidthSamps = chipWidthSec*BARKER_CODE_SYMBOLS*receivedSampleRate;
+	const std::uint16_t chipWidthSamps = chipWidthSec*receivedSampleRate;
+
 	// Set the time on the device
 
 	const double timeInSecs = std::chrono::system_clock::now().time_since_epoch() / std::chrono::microseconds(1) * 1e-6;
 
 	usrp->set_time_now(uhd::time_spec_t(timeInSecs));
-/*
+
 	// Set up the configuration parameters necessary to receive samples with the device
 
-	// create a receive streamer
-	uhd::stream_args_t stream_args("sc16","sc12"); // 16-bit integers on host, 12-bit over-the-wire
-	uhd::rx_streamer::sptr rx_stream = usrp->get_rx_stream(stream_args);
+	// create a transmit & receive streamer
+	uhd::stream_args_t rx_stream_args("sc16","sc12"); // 16-bit integers on host, 12-bit over-the-wire
+	uhd::rx_streamer::sptr rx_stream = usrp->get_rx_stream(rx_stream_args);
+	uhd::stream_args_t tx_stream_args("fc32","sc12"); // 32-bit complex float on host, 12-bit over-the-wire
+	uhd::tx_streamer::sptr tx_stream = usrp->get_tx_stream(tx_stream_args);
 	const std::uint32_t maxSampsPerBuffer = rx_stream->get_max_num_samps();
 
 	// Compute the requested number of samples and buffer size
@@ -132,23 +171,23 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 
 	if constexpr (std::endian::native == std::endian::big)
 	{
-		packet.endianness = 0x00000000;
+		rxPacket.endianness = 0x00000000;
 	}
 	else if constexpr (std::endian::native == std::endian::little)
 	{
-		packet.endianness = 0x01010101;
+		rxPacket.endianness = 0x01010101;
 	}
 	else
 	{
-		packet.endianness = 0xFFFFFFFF;
+		rxPacket.endianness = 0xFFFFFFFF;
 	}
 
 	// Set information about the recording for data analysis purposes
 
-	packet.frequencyHz = frequencyHz;
-	packet.bandwidthHz = receivedBandwidthHz;
-	packet.sampleRate = receivedSampleRate;
-	packet.numSamples = sampleLength;
+	rxPacket.frequencyHz = frequencyHz;
+	rxPacket.bandwidthHz = receivedBandwidthHz;
+	rxPacket.sampleRate = receivedSampleRate;
+	rxPacket.numSamples = sampleLength;
 
 	// Allocate the host buffer the device will be streaming to
 
@@ -159,81 +198,77 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 	const std::chrono::system_clock::time_point startTime = std::chrono::system_clock::now();
 	std::chrono::system_clock::time_point currentTime;
 
-	do
+	const float symbols[BARKER_CODE_SYMBOLS] = {+1,+1,+1,+1,+1,+1,+1,+1,+1,+1,+1,+1,+1}; // no phase modulation
+	//const float symbols[BARKER_CODE_SYMBOLS] = {+1,+1,+1,+1,+1,-1,-1,+1,+1,-1,+1,-1,+1}; // 13-bit Barker code symbols
+	std::vector<std::complex<float>> txBuffVec;
+
+	for(int ii = 0; ii < BARKER_CODE_SYMBOLS; ii++)
 	{
-		// If we're saturated, then drop the receive gain down by 1 dB
-		if (saturated)
+		for(int jj = 0; jj < chipWidthSamps; jj++)
 		{
-			usrp->set_rx_gain(--rxGain);
-			rxGain = usrp->get_rx_gain();
-
-			std::cout << "Gain = " << rxGain << " dB" << std::endl;
+			txBuffVec.push_back(std::complex<float>(0,symbols[ii]));
 		}
-
-		packet.rxGain = rxGain;
-		saturated = false;
-
-		memset(iq, 0, bufferSize*sizeof(std::int16_t));
-
-		memset(&meta, 0, sizeof(meta));
-
-		size_t num_accum_samps = 0;
-
-		stream_cmd.stream_mode = uhd::stream_cmd_t::STREAM_MODE_START_CONTINUOUS;
-		rx_stream->issue_stream_cmd(stream_cmd);
-
-		while(num_accum_samps < sampleLength)
-		{
-			const std::int32_t startIndex = 2*num_accum_samps;
-			const std::int32_t remainingSize = 2*sampleLength-(2*num_accum_samps);
-
-			num_accum_samps += rx_stream->recv(&iq[startIndex], remainingSize, meta, 5.0, true);
-
-			// Handle streaming error codes
-			switch (meta.error_code)
-			{
-				// No errors
-				case uhd::rx_metadata_t::ERROR_CODE_NONE:
-					break;
-
-				case uhd::rx_metadata_t::ERROR_CODE_TIMEOUT: // I get this error on the expected last iteration of the while loop
-					std::cout << "ERROR_CODE_TIMEOUT: Got timeout before all samples received" << std::endl;
-					break;
-
-				case uhd::rx_metadata_t::ERROR_CODE_OVERFLOW:
-					overrunCounter++;
-					std::cout << "ERROR_CODE_OVERFLOW: Overflowed" << std::endl;
-					break;
-
-				default:
-					std::cout << "Got error code: " << meta.strerror() << std::endl;
-					break;
-			}
-		}
-
-		stream_cmd.stream_mode = uhd::stream_cmd_t::STREAM_MODE_STOP_CONTINUOUS;
-		rx_stream->issue_stream_cmd(stream_cmd);
-
-		std::cout << "Received " << num_accum_samps << std::endl;
-
-		// Look for instances of saturating to min or max value
-		const auto [minSamp, maxSamp] = std::minmax_element(std::execution::par_unseq, std::begin(iq_vec), std::end(iq_vec));
-
-		saturated = (((*minSamp) <= SAMP_MIN) || ((*maxSamp) >= SAMP_MAX));
-
-		packet.numSamples = num_accum_samps;
-		packet.sampleStartTime = meta.time_spec.get_real_secs();
-
-		getFilenameStr(filenameStr);
-
-		std::ofstream fout(filenameStr);
-		fout.write((char*)&packet, sizeof(packet));
-		fout.write((char*)iq, 2*num_accum_samps*sizeof(std::int16_t));
-		fout.close();
-
-		currentTime = std::chrono::system_clock::now();
 	}
-	while(((currentTime - startTime) / std::chrono::milliseconds(1) * 1e-3) <= collectionDuration);
+
+	txMeta.start_of_burst = true;
+	txMeta.end_of_burst = true;
+	txMeta.has_time_spec = true;
+
+	memset(iq, 0, bufferSize*sizeof(std::int16_t));
+
+	memset(&rxMeta, 0, sizeof(rxMeta));
+
+	txMeta.time_spec = usrp->get_time_now() + uhd::time_spec_t(0.05);
+	size_t num_accum_samps = tx_stream->send(&txBuffVec.front(), txBuffVec.size(), txMeta);
+
+	//std::cout << std::setprecision(20) << "Transmitting " << num_accum_samps << " samples at " << txMeta.time_spec.get_real_secs() << std::endl;
+
+	stream_cmd.stream_mode = uhd::stream_cmd_t::STREAM_MODE_START_CONTINUOUS;
+	rx_stream->issue_stream_cmd(stream_cmd);
+
+	while(num_accum_samps < sampleLength)
+	{
+		const std::int32_t startIndex = 2*num_accum_samps;
+		const std::int32_t remainingSize = 2*sampleLength-(2*num_accum_samps);
+
+		num_accum_samps += rx_stream->recv(&iq[startIndex], remainingSize, rxMeta, 5.0, true);
+
+		// Handle streaming error codes
+		switch (rxMeta.error_code)
+		{
+			// No errors
+			case uhd::rx_metadata_t::ERROR_CODE_NONE:
+				break;
+
+			case uhd::rx_metadata_t::ERROR_CODE_TIMEOUT: // I get this error on the expected last iteration of the while loop
+				std::cout << "ERROR_CODE_TIMEOUT: Got timeout before all samples received" << std::endl;
+				break;
+
+			case uhd::rx_metadata_t::ERROR_CODE_OVERFLOW:
+				overrunCounter++;
+				std::cout << "ERROR_CODE_OVERFLOW: Overflowed" << std::endl;
+				break;
+
+			default:
+				std::cout << "Got error code: " << rxMeta.strerror() << std::endl;
+				break;
+		}
+	}
+
+	stream_cmd.stream_mode = uhd::stream_cmd_t::STREAM_MODE_STOP_CONTINUOUS;
+	rx_stream->issue_stream_cmd(stream_cmd);
+
+	std::cout << "Received " << num_accum_samps << std::endl;
+
+	rxPacket.numSamples = num_accum_samps;
+	rxPacket.sampleStartTime = rxMeta.time_spec.get_real_secs();
+
+	getFilenameStr(filenameStr);
+
+	std::ofstream fout(filenameStr);
+	fout.write((char*)&rxPacket, sizeof(rxPacket));
+	fout.write((char*)iq, 2*num_accum_samps*sizeof(std::int16_t));
+	fout.close();
 
 	// Disable the device
 
@@ -243,6 +278,6 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 	std::cout << "Disabled RX" << std::endl;
 
 	std::cout << "There were " << overrunCounter << " overruns." << std::endl;
-*/
+
 	return status;
 }
