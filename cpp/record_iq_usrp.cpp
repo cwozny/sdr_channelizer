@@ -124,7 +124,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 	// Compute the requested number of samples and buffer size
 
 	const std::uint32_t sampleLength = dwellDuration*receivedSampleRate;
-	const std::uint32_t bufferSize = 2*sampleLength;
+	const std::uint32_t bufferSize = 2*sampleLength + 5440; // need to reserve some extra space for some reason, TODO: this should be understood and fixed
 
 	// Set up the configuration parameters necessary to receive samples with the device
 
@@ -194,9 +194,10 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 
 		while(num_accum_samps < sampleLength)
 		{
-			size_t num_rx_samps = rx_stream->recv(&iq_vec.front()+(2*num_accum_samps), iq_vec.size()-(2*num_accum_samps), meta, 5.0, true);
+			const std::int32_t startIndex = 2*num_accum_samps;
+			const std::int32_t remainingSize = 2*sampleLength-(2*num_accum_samps);
 
-			num_accum_samps += num_rx_samps;
+			num_accum_samps += rx_stream->recv(&iq[startIndex], remainingSize, meta, 5.0, true);
 
 			// Handle streaming error codes
 			switch (meta.error_code)
