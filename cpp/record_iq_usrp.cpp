@@ -44,8 +44,6 @@ void getFilenameStr(char* filenameStr)
 
 int UHD_SAFE_MAIN(int argc, char *argv[])
 {
-	uhd::set_thread_priority_safe();
-
 	std::int32_t status = EXIT_SUCCESS;
 	uhd::rx_metadata_t meta;
 	std::string device_args("");
