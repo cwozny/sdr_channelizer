@@ -131,7 +131,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 	// Set up the configuration parameters necessary to receive samples with the device
 
 	// create a receive streamer
-	uhd::stream_args_t stream_args("sc16","sc16"); // 16-bit integers
+	uhd::stream_args_t stream_args("sc16","sc12"); // 16-bit integers on host, 12-bit over-the-wire
 	uhd::rx_streamer::sptr rx_stream = usrp->get_rx_stream(stream_args);
 
 	// setup streaming
