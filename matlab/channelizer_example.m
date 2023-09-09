@@ -13,15 +13,15 @@ fprintf('%s - Loading data\n', datestr(now))
 
 load data.mat
 
+iq = iq';
+
 %% Channelize
 
 fprintf('%s - Channelizing data\n', datestr(now))
 
-numBands = 10;
+numBands = 50;
 
 channelizer = dsp.Channelizer(numBands);
-
-iq = iq';
 
 extra = mod(length(iq),numBands);
 
