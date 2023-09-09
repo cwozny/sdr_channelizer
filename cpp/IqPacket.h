@@ -15,8 +15,7 @@ struct IqPacket
 	std::uint32_t spare1;
 	char fpgaVersion[32];
 	char fwVersion[32];
-	std::uint64_t baseTimeMs;
-	std::uint64_t sampleStartTime;
+	double sampleStartTime;
 };
 
 #endif

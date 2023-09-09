@@ -117,6 +117,12 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 
 	usrp->set_rx_antenna(ant);
 
+	// Set the time on the device
+
+	const double timeInSecs = std::chrono::system_clock::now().time_since_epoch() / std::chrono::seconds(1);
+
+	usrp->set_time_now(uhd::time_spec_t(timeInSecs));
+
 	// Compute the requested number of samples and buffer size
 
 	const std::uint32_t sampleLength = dwellDuration*receivedSampleRate;
@@ -155,7 +161,6 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 	packet.bandwidthHz = receivedBandwidthHz;
 	packet.sampleRate = receivedSampleRate;
 	packet.numSamples = sampleLength;
-	packet.baseTimeMs = std::chrono::system_clock::now().time_since_epoch() / std::chrono::milliseconds(1);
 
 	// Allocate the host buffer the device will be streaming to
 
@@ -229,7 +234,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 		saturated = (maxVal != std::end(iq_vec)) || (minVal != std::end(iq_vec));
 
 		packet.numSamples = num_accum_samps;
-		packet.sampleStartTime = 0;
+		packet.sampleStartTime = meta.time_spec.get_real_secs();
 
 		getFilenameStr(filenameStr);
 

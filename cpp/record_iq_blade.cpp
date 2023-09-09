@@ -251,7 +251,6 @@ int main(const int argc, const char *argv[])
 	packet.bandwidthHz = receivedBandwidthHz;
 	packet.sampleRate = receivedSampleRate;
 	packet.numSamples = sampleLength;
-	packet.baseTimeMs = std::chrono::system_clock::now().time_since_epoch() / std::chrono::milliseconds(1);
 
 	// Allocate the host buffer the device will be streaming to
 
@@ -289,6 +288,8 @@ int main(const int argc, const char *argv[])
 		memset(&meta, 0, sizeof(meta));
 		meta.flags = BLADERF_META_FLAG_RX_NOW;
 
+		packet.sampleStartTime = std::chrono::system_clock::now().time_since_epoch() / std::chrono::seconds(1);
+
 		status = bladerf_sync_rx(dev, iq, sampleLength, &meta, 5000);
 
 		if (status != 0)
@@ -311,7 +312,6 @@ int main(const int argc, const char *argv[])
 		}
 		
 		packet.numSamples = meta.actual_count;
-		packet.sampleStartTime = meta.timestamp;
 
 		getFilenameStr(filenameStr);
 
