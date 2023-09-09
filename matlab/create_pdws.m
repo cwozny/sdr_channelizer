@@ -12,6 +12,7 @@ close all
 listing = dir('.');
 
 pdw.t = [];
+pdw.freq = [];
 pdw.snr = [];
 pdw.pw = [];
 pdw.saturated = [];
@@ -67,6 +68,7 @@ for ii = 1:length(listing)
                     pdw.snr = [pdw.snr; 10*log10((amp/pw)/nf)];
                     pdw.pw = [pdw.pw; pw/fs];
                     pdw.saturated = [pdw.saturated; saturated];
+                    pdw.freq = [pdw.freq; 0];
                 else % Otherwise we're still measuring a pulse
                     pw = pw + 1;
                     amp = amp + mag(jj);
