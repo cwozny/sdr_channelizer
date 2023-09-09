@@ -2,7 +2,7 @@
 
 clc
 
-fprintf('%s - Clearing everything out\n', datestr(now))
+fprintf('%s - Clearing everything out\n', datetime)
 
 clear all
 close all
@@ -37,7 +37,7 @@ for ii = 1:length(listing)
         pdw.pw = [];
         pdw.sat = [];
 
-        fprintf('%s - Loading %s\n', datestr(now), listing(ii).name)
+        fprintf('%s - Loading %s\n', datetime, listing(ii).name)
 
         load(fullfile(listing(ii).folder,listing(ii).name))
 
@@ -51,7 +51,7 @@ for ii = 1:length(listing)
 
         if max(abs(iq)) > 0.9
 
-            fprintf('%s - Computing noise floor\n', datestr(now))
+            fprintf('%s - Computing noise floor\n', datetime)
 
             % Convert complex I/Q to magnitude and phase data
             mag = abs(iq);
@@ -64,7 +64,7 @@ for ii = 1:length(listing)
             SNR_THRESHOLD = 20 % dB
             PULSE_THRESHOLD = NOISE_FLOOR*10^(SNR_THRESHOLD/10)
 
-            fprintf('%s - Generating PDWs\n', datestr(now))
+            fprintf('%s - Generating PDWs\n', datetime)
 
             pulseActive = false; % keeps track of whether pulse is active
             saturated = false; % keeps track of whether pulse was ever saturated

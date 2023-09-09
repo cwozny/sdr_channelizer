@@ -2,7 +2,7 @@
 
 clc
 
-fprintf('%s - Clearing everything out\n', datestr(now))
+fprintf('%s - Clearing everything out\n', datetime)
 
 clear all
 close all
@@ -22,7 +22,7 @@ pdw.sat = [];
 for ii = 1:length(listing)
     if contains(listing(ii).name,'.mat')
 
-        fprintf('%s - Loading %s\n', datestr(now), listing(ii).name)
+        fprintf('%s - Loading %s\n', datetime, listing(ii).name)
 
         load(fullfile(listing(ii).folder,listing(ii).name))
 
@@ -36,7 +36,7 @@ for ii = 1:length(listing)
         iq = iq/32768; % Normalize from -1 to 1
         iq = iq(1,:) + 1j*iq(2,:); % Convert to complex
 
-        fprintf('%s - Channelizing data\n', datestr(now))
+        fprintf('%s - Channelizing data\n', datetime)
 
         binFreqs = centerFrequencies(channelizer,fs);
 
@@ -60,7 +60,7 @@ for ii = 1:length(listing)
 
         fs = fs/M; % This is the new decimated sampling rate
 
-        fprintf('%s - Computing noise floor\n', datestr(now))
+        fprintf('%s - Computing noise floor\n', datetime)
 
         % Convert complex I/Q to magnitude and phase data
         mag = abs(iq);
@@ -73,7 +73,7 @@ for ii = 1:length(listing)
         SNR_THRESHOLD = 15 % dB
         PULSE_THRESHOLD = NOISE_FLOOR*10^(SNR_THRESHOLD/10)
 
-        fprintf('%s - Generating PDWs\n', datestr(now))
+        fprintf('%s - Generating PDWs\n', datetime)
 
         for bin = 1:M
             fc_chan = fc + binFreqs(bin); % frequency in hz for this bin
