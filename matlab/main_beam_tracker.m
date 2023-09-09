@@ -9,8 +9,7 @@ close all
 
 %% Load data
 
-topDir = uigetdir('/');
-listing = dir(topDir);
+listing = dir(uigetdir('/'));
 
 firstFileSampleTime = nan;
 
@@ -28,7 +27,6 @@ hCurrMbePlot=plot(nan,nan,'r*');
 grid on
 ylabel('SNR (dB)')
 xlabel('Sample Time (sec)')
-xlim([0 120])
 
 for ii = 1:length(listing)
     if contains(listing(ii).name,'.mat')

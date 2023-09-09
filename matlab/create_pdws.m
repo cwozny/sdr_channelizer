@@ -9,7 +9,7 @@ close all
 
 %% Load data
 
-listing = dir('.');
+listing = dir(uigetdir('/'));
 
 %% Initialize data
 

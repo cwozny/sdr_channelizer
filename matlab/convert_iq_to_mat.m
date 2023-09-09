@@ -9,7 +9,7 @@ close all
 
 %% Load data
 
-listing = dir;
+listing = dir(uigetdir('/'));
 
 for ii = 1:length(listing)
 
