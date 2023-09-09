@@ -97,6 +97,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 	usrp->set_rx_rate(requestedSampleRate);
 	receivedSampleRate = usrp->get_rx_rate();
 	std::cout <<  "Sample Rate = " << receivedSampleRate*1e-6 << " Msps" << std::endl;
+	const float fs = receivedSampleRate;
 
 	// Set analog bandwidth of device
 
@@ -255,12 +256,11 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 
 			// Compute the noise floor as the median of the magnitude of the I/Q data
 			const float NOISE_FLOOR = mag[mag.size()/2]; // compute the median by picking the middle element of sorted vector
-			const float SNR_THRESHOLD = 12; // dB
+			const float SNR_THRESHOLD = 20; // dB
+			const float PULSE_THRESHOLD = NOISE_FLOOR * pow(10,SNR_THRESHOLD/10);
 
 			std::cout << "Noise floor = " << NOISE_FLOOR << std::endl;
-
-			// Compute the magnitude threshold to declare a pulse
-			const float PULSE_THRESHOLD = NOISE_FLOOR * pow(10,SNR_THRESHOLD/1);
+			std::cout << "Pulse threshold = " << PULSE_THRESHOLD << std::endl;
 
 			bool pulseActive = false; // keeps track of whether pulse is active
 			bool pulseSaturated = false; // keeps track of whether pulse was ever saturated
@@ -286,7 +286,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 						pulseActive = false; // the pulse is no longer active
 
 						// compute the UTC time of the time of arrival of the pulse
-						//thisToa = (toa/fs)+(sampleStartTime - firstFileSampleTime);
+						double thisToa = (toa/fs)+meta.time_spec.get_real_secs();
 
 						// compute the amplitude as the median magnitude over the entire pulse
 						//thisAmp = median(mag(toa:jj));
@@ -298,7 +298,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 						// compute the pulse width as the number of samples
 						// this pulse was active for divided by the sampling
 						// rate for this channelizer bin
-						//thisPw = (jj-toa)/fs;
+						double thisPw = (jj-toa)/fs;
 
 						// compute the median phase difference of this pulse
 						// in order to compute the frequency
@@ -312,6 +312,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 						// from the center frequency of this channelizer bin
 						//thisFreq = fc+(fs/(360/medPhaseDiff));
 
+						std::cout << thisToa << " " << thisPw << std::endl;
 						//pdw.toa = [pdw.toa; thisToa];
 						//pdw.freq = [pdw.freq; thisFreq];
 						//pdw.pw = [pdw.pw; thisPw];
