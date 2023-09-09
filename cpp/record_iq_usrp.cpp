@@ -52,8 +52,8 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 	std::string ref("internal");
 	IqPacket packet;
 	char filenameStr[80];
-	const std::int16_t SAMP_MAX = 32735;
-	const std::int16_t SAMP_MIN = -32735;
+	const std::int16_t SAMP_MAX = 32736;
+	const std::int16_t SAMP_MIN = -32736;
 	bool saturated = false;
 	std::uint32_t overrunCounter = 0;
 
