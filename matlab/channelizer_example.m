@@ -19,7 +19,7 @@ iq = iq';
 
 fprintf('%s - Channelizing data\n', datestr(now))
 
-numBands = 40;
+numBands = fs*1e-6; % 1 MHz channelizer bins
 
 channelizer = dsp.Channelizer(numBands);
 
@@ -40,7 +40,7 @@ zlabel('Magnitude')
 
 pause(1)
 
-for ii = 1:500e-6*fs:length(iq)
+for ii = 1:100*numBands:length(iq)
 
     start = ii;
     stop = ii+samples-1;
@@ -49,7 +49,7 @@ for ii = 1:500e-6*fs:length(iq)
 
     zeroCenterOut = fftshift(out,2);
 
-    f = fc+centerFrequencies(channelizer,fs)*1e-6;
+    f = (fc+centerFrequencies(channelizer,fs))*1e-6;
     t = ii/fs + (0:size(out,1)-1)*numBands/fs;
 
     hSurf.XData = f;
