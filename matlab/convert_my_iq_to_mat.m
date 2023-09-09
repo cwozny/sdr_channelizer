@@ -28,13 +28,16 @@ for ii = 1:length(listing)
             warning('%s - Reading in file with unknown endianness\n', datestr(now))
         end
 
+        linkSpeed = fread(fid,1,'uint32=>uint32');
         fc = fread(fid,1,'uint32=>float64');
         bw = fread(fid,1,'uint32=>float64');
         fs = fread(fid,1,'uint32=>float64');
         gain = fread(fid,1,'uint32=>float64');
         numSamples = fread(fid,1,'uint32=>float64');
+        spare1 = fread(fid,1,'uint32=>uint32');
+        fpgaVersion = string(fread(fid,32,'*char')');
+        fwVersion = string(fread(fid,32,'*char')');
         timestamp = fread(fid,1,'uint64=>uint64');
-
         iq = fread(fid,[2,inf],'int16=>int16');
 
         fclose(fid);
@@ -51,7 +54,7 @@ for ii = 1:length(listing)
 
         [filepath,name,ext] = fileparts(listing(ii).name);
 
-        save(sprintf('%s.mat',name),'iq','fs','fc','dur','bw','gain','timestamp','-v7.3')
+        save(sprintf('%s.mat',name),'iq','fs','fc','dur','bw','gain','timestamp','linkSpeed','fpgaVersion','fwVersion','-v7.3')
 
         clear iq
         clear fs
