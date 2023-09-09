@@ -52,6 +52,7 @@ int main(const int argc, const char *argv[])
 	const std::int16_t INT12_MAX = 2047;
 	const std::int16_t INT12_MIN = -2048;
 	bool saturated = false;
+	std::uint32_t overrunCounter = 0;
 
 	const std::uint32_t frequencyHz = atof(argv[1])*1e6;
 	const std::uint32_t requestedBandwidthHz = atof(argv[2])*1e6;
@@ -279,6 +280,7 @@ int main(const int argc, const char *argv[])
 		else if (meta.status & BLADERF_META_STATUS_OVERRUN)
 		{
 			std::cout << "Overrun detected in scheduled RX. " << meta.actual_count << " valid samples were read." << std::endl;
+			overrunCounter++;
 		}
 		else
 		{
@@ -313,6 +315,8 @@ int main(const int argc, const char *argv[])
 	{
 		std::cout << "Failed to disable RX: " << bladerf_strerror(status) << std::endl;
 	}
+
+	std::cout << "There were " << overrunCounter << " overruns." << std::endl;
 	
 	return status;
 }
