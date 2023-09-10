@@ -107,6 +107,19 @@ int main(const int argc, const char *argv[])
 
   std::cout << "Using " << bladerf_get_board_name(dev) << " serial number " << serNo.serial << std::endl;
 
+  status = bladerf_enable_feature(dev, BLADERF_FEATURE_OVERSAMPLE, true);
+
+  if (status == 0)
+  {
+    std::cout << "8-bit overlock mode: enabled" << std::endl;
+  }
+  else
+  {
+    std::cout << "8-bit overlock mode: disabled (" << bladerf_strerror(status) << ")" << std::endl;
+    bladerf_close(dev);
+    return 1;
+  }
+
   // Set center frequency of device
 
   status = bladerf_set_frequency(dev, channel, frequencyHz);
@@ -171,13 +184,24 @@ int main(const int argc, const char *argv[])
 
   status = bladerf_set_gain(dev, channel, rxGain);
 
+  if (status != 0)
+  {
+    std::cout << "Failed to set gain: " << bladerf_strerror(status) << std::endl;
+    bladerf_close(dev);
+    return 1;
+  }
+
+  // Get gain of the device
+
+  status = bladerf_get_gain(dev, channel, &rxGain);
+
   if (status == 0)
   {
     std::cout << "Gain = " << rxGain << " dB" << std::endl;
   }
   else
   {
-    std::cout << "Failed to set gain: " << bladerf_strerror(status) << std::endl;
+    std::cout << "Failed to get gain: " << bladerf_strerror(status) << std::endl;
     bladerf_close(dev);
     return 1;
   }
@@ -251,6 +275,7 @@ int main(const int argc, const char *argv[])
   packet.bandwidthHz = receivedBandwidthHz;
   packet.sampleRate = receivedSampleRate;
   packet.numSamples = sampleLength;
+  packet.rxGain = rxGain;
 
   // Allocate the host buffer the device will be streaming to
 
