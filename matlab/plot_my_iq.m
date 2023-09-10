@@ -41,7 +41,7 @@ for ii = 1:length(listing)
         fpgaVersion = string(fread(fid,32,'*char')');
         fwVersion = string(fread(fid,32,'*char')');
         sampleStartTime = fread(fid,1,'float64=>float64');
-        iq = fread(fid,[2,inf],'int16=>int16');
+        iq = fread(fid,[2,inf],'int8=>int8');
 
         fclose(fid);
 
@@ -62,7 +62,8 @@ for ii = 1:length(listing)
     if loaded
         iq = double(iq);
         %iq = iq/32768; % This is the max for the USRP b200mini
-        iq = iq/2048; % This is the max for the bladeRF 2.0 micro
+        iq = iq/2048; % This is the max for the bladeRF 2.0 micro 16-bit
+        %iq = iq/256; % This is the max for the bladeRF 2.0 micro 8-bit
         iq = iq(1,:) + 1j*iq(2,:);
 
         mag = abs(iq);

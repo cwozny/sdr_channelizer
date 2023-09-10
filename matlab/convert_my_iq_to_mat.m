@@ -9,7 +9,7 @@ close all
 
 %% Load data
 
-listing = dir(uigetdir('/'));
+listing = dir(uigetdir('../cpp'));
 
 for ii = 1:length(listing)
     if contains(listing(ii).name,'.iq')

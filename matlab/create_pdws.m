@@ -9,7 +9,7 @@ close all
 
 %% Load data
 
-listing = dir(uigetdir('/'));
+listing = dir(uigetdir('./'));
 
 %% Initialize data
 
@@ -27,7 +27,7 @@ for ii = 1:length(listing)
         load(fullfile(listing(ii).folder,listing(ii).name))
 
         iq = double(iq); % Convert from int16 to double
-        iq = iq/32768; % Normalize from -1 to 1
+        iq = iq/2048; % Normalize from -1 to 1
         iq = iq(1,:) + 1j*iq(2,:); % Convert to complex
 
         fprintf('%s - Computing noise floor\n', datetime)
@@ -40,7 +40,7 @@ for ii = 1:length(listing)
         % I used median here instead of average because it is a "resistant
         % statistic".
         NOISE_FLOOR = median(mag);
-        SNR_THRESHOLD = 15 % dB
+        SNR_THRESHOLD = 10 % dB
         PULSE_THRESHOLD = NOISE_FLOOR*10^(SNR_THRESHOLD/10)
 
         fprintf('%s - Generating PDWs\n', datetime)
