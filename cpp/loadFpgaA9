@@ -1,2 +1,3 @@
 bladeRF-cli -l ~/workarea/hostedxA9_v0.15.0.rbf
 bladeRF-cli -f ~/workarea/bladeRF_fw_v2.4.0.img
+bladeRF-cli -e info -e version
