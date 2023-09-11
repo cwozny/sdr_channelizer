@@ -282,6 +282,7 @@ int main(const int argc, const char *argv[])
   packet.sampleRate = receivedSampleRate;
   packet.numSamples = sampleLength;
   packet.rxGain = rxGain;
+  packet.bitWidth = 12; // signed 12-bit integer
 
   // Allocate the host buffer the device will be streaming to
 
