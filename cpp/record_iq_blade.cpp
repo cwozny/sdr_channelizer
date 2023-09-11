@@ -106,20 +106,22 @@ int main(const int argc, const char *argv[])
   bladerf_get_serial_struct(dev, &serNo);
 
   std::cout << "Using " << bladerf_get_board_name(dev) << " serial number " << serNo.serial << std::endl;
-/*
-  status = bladerf_enable_feature(dev, BLADERF_FEATURE_OVERSAMPLE, true);
+
+  // Set relevant features of device
+
+  status = bladerf_enable_feature(dev, BLADERF_FEATURE_DEFAULT, true);
 
   if (status == 0)
   {
-    std::cout << "8-bit overlock mode: enabled" << std::endl;
+    std::cout << "Feature = default" << std::endl;
   }
   else
   {
-    std::cout << "8-bit overlock mode: disabled (" << bladerf_strerror(status) << ")" << std::endl;
+    std::cout << "Failed to set feature = default: " << bladerf_strerror(status) << std::endl;
     bladerf_close(dev);
     return 1;
   }
-*/
+
   // Set center frequency of device
 
   status = bladerf_set_frequency(dev, channel, frequencyHz);
