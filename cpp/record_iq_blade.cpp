@@ -49,8 +49,8 @@ int main(const int argc, const char *argv[])
   bladerf_serial serNo;
   IqPacket packet;
   char filenameStr[80];
-  const std::int16_t SAMP_MAX = 2047;
-  const std::int16_t SAMP_MIN = -2048;
+  const std::int8_t SAMP_MAX = 127;
+  const std::int8_t SAMP_MIN = -128;
   bool saturated = false;
   std::uint32_t overrunCounter = 0;
 
@@ -109,15 +109,15 @@ int main(const int argc, const char *argv[])
 
   // Set relevant features of device
 
-  status = bladerf_enable_feature(dev, BLADERF_FEATURE_DEFAULT, true);
+  status = bladerf_enable_feature(dev, BLADERF_FEATURE_OVERSAMPLE, true);
 
   if (status == 0)
   {
-    std::cout << "Feature = default" << std::endl;
+    std::cout << "Feature = oversample" << std::endl;
   }
   else
   {
-    std::cout << "Failed to set feature = default: " << bladerf_strerror(status) << std::endl;
+    std::cout << "Failed to set feature = oversample: " << bladerf_strerror(status) << std::endl;
     bladerf_close(dev);
     return 1;
   }
@@ -235,7 +235,7 @@ int main(const int argc, const char *argv[])
 
   // Configure both the device's x1 RX and TX channels for use with the synchronous interface.
 
-  status = bladerf_sync_config(dev, BLADERF_RX_X1, BLADERF_FORMAT_SC16_Q11_META, num_buffers, buffer_size, num_transfers, timeout_ms);
+  status = bladerf_sync_config(dev, BLADERF_RX_X1, BLADERF_FORMAT_SC8_Q7_META, num_buffers, buffer_size, num_transfers, timeout_ms);
 
   if (status == 0)
   {
@@ -282,13 +282,13 @@ int main(const int argc, const char *argv[])
   packet.sampleRate = receivedSampleRate;
   packet.numSamples = sampleLength;
   packet.rxGain = rxGain;
-  packet.bitWidth = 12; // signed 12-bit integer
+  packet.bitWidth = 8; // signed 8-bit integer
 
   // Allocate the host buffer the device will be streaming to
 
-  std::vector<std::int16_t> iq_vec;
+  std::vector<std::int8_t> iq_vec;
   iq_vec.resize(bufferSize, 0);
-  std::int16_t* iq = iq_vec.data();
+  std::int8_t* iq = iq_vec.data();
 
   const std::chrono::system_clock::time_point startTime = std::chrono::system_clock::now();
   std::chrono::system_clock::time_point currentTime;
@@ -315,7 +315,7 @@ int main(const int argc, const char *argv[])
 
     saturated = false;
 
-    memset(iq, 0, bufferSize*sizeof(std::int16_t));
+    memset(iq, 0, bufferSize*sizeof(std::int8_t));
 
     memset(&meta, 0, sizeof(meta));
     meta.flags = BLADERF_META_FLAG_RX_NOW;
@@ -358,7 +358,7 @@ int main(const int argc, const char *argv[])
 
     std::ofstream fout(filenameStr);
     fout.write((char*)&packet, sizeof(packet));
-    fout.write((char*)iq, 2*meta.actual_count*sizeof(std::int16_t));
+    fout.write((char*)iq, 2*meta.actual_count*sizeof(std::int8_t));
     fout.close();
 
     currentTime = std::chrono::system_clock::now();
