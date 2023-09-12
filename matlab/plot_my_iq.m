@@ -60,10 +60,9 @@ for ii = 1:length(listing)
     end
 
     if loaded
+        maxVal = double(2^(bitWidth-1));
         iq = double(iq);
-        %iq = iq/32768; % This is the max for the USRP b200mini
-        iq = iq/2048; % This is the max for the bladeRF 2.0 micro 16-bit
-        %iq = iq/256; % This is the max for the bladeRF 2.0 micro 8-bit
+        iq = iq/maxVal;
         iq = iq(1,:) + 1j*iq(2,:);
 
         mag = abs(iq);
