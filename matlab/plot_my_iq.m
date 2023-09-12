@@ -81,6 +81,7 @@ for ii = 1:length(listing)
         grid on
         hAx=gca;
         ylabel('Magnitude')
+        title(listing(ii).name,'Interpreter','none')
 
         subplot(2,1,2)
         plot(t,phase,'.')
