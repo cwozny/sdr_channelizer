@@ -1,1 +1,0 @@
-g++ record_iq_blade.cpp -lbladeRF -O3 -std=c++2a -o blade_recorder.out
