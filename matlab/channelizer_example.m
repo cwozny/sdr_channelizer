@@ -52,23 +52,24 @@ for ii = 1:100*numBands:length(iq)
     start = ii;
     stop = ii+samples-1;
 
-    out = abs(channelizer(iq(start:stop)));
+    if stop <= length(iq)
+        out = abs(channelizer(iq(start:stop)));
 
-    zeroCenterOut = fftshift(out,2);
+        zeroCenterOut = fftshift(out,2);
 
-    f = (fc-centerFrequencies(channelizer,fs))*1e-6;
-    t = ii/fs + (0:size(out,1)-1)*numBands/fs;
+        f = (fc-centerFrequencies(channelizer,fs))*1e-6;
+        t = ii/fs + (0:size(out,1)-1)*numBands/fs;
 
-    hSurf.XData = f;
-    hSurf.YData = t;
-    hSurf.ZData = zeroCenterOut;
-    
-    axis tight
+        hSurf.XData = f;
+        hSurf.YData = t;
+        hSurf.ZData = zeroCenterOut;
 
-    zlim([0 1.5])
+        axis tight
 
-    writeVideo(vidObj,getframe(gcf))
+        zlim([0 1.5])
 
+        writeVideo(vidObj,getframe(gcf))
+    end
 end
 
 close(vidObj)
