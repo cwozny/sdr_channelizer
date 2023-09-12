@@ -45,8 +45,9 @@ for ii = 1:length(listing)
             firstFileSampleTime = sampleStartTime;
         end
 
-        iq = double(iq); % Convert from int16 to double
-        iq = iq/32768; % Normalize from -1 to 1
+        maxVal = double(2^(bitWidth-1));
+        iq = double(iq); % Convert from intX to double
+        iq = iq/maxVal; % Normalize from -1 to 1
         iq = iq(1,:) + 1j*iq(2,:); % Convert to complex
 
         if max(abs(iq)) > 0.9

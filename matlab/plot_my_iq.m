@@ -37,7 +37,7 @@ for ii = 1:length(listing)
         fs = fread(fid,1,'uint32=>float64');
         gain = fread(fid,1,'uint32=>float64');
         numSamples = fread(fid,1,'uint32=>float64');
-        spare1 = fread(fid,1,'uint32=>uint32');
+        bitWidth = fread(fid,1,'uint32=>uint32');
         fpgaVersion = string(fread(fid,32,'*char')');
         fwVersion = string(fread(fid,32,'*char')');
         sampleStartTime = fread(fid,1,'float64=>float64');

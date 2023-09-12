@@ -15,10 +15,10 @@ fprintf('%s - Loading data\n', datetime)
 
 load(fullfile(path,file))
 
-iq = double(iq);
-%iq = iq / 32768; % This is the max for the USRP b200mini
-iq = iq / 2048; % This is the max for the bladeRF 2.0 micro
-iq = iq(1,:) + 1j*iq(2,:);
+maxVal = double(2^(bitWidth-1));
+iq = double(iq); % Convert from intX to double
+iq = iq/maxVal; % Normalize from -1 to 1
+iq = iq(1,:) + 1j*iq(2,:); % Convert to complex
 
 iq = iq';
 
