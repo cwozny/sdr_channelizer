@@ -351,7 +351,7 @@ int main(const int argc, const char *argv[])
 
     std::ofstream fout(filenameStr);
     fout.write((char*)&packet, sizeof(packet));
-    fout.write((char*)iq, 2*meta.actual_count*sizeof(std::int8_t));
+    fout.write((char*)iq, 2*packet.numSamples*sizeof(std::int8_t));
     fout.close();
 
     currentTime = std::chrono::system_clock::now();
