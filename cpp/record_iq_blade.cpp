@@ -54,6 +54,14 @@ int main(const int argc, const char *argv[])
   bool saturated = false;
   std::uint32_t overrunCounter = 0;
 
+  if (argc != 8)
+  {
+    std::cout << std::endl << "\tUsage:" << std::endl;
+    std::cout << "\t\t./blade_recorder.out <freqMhz> <bwMhz> <sampleRateMsps> <gainDb> <dwellSec> <durationSec> <autoGainReduction>" << std::endl;
+    std::cout << std::endl;
+    return 1;
+  }
+
   const std::uint64_t frequencyHz = atof(argv[1])*1e6;
   const std::uint32_t requestedBandwidthHz = atof(argv[2])*1e6;
   std::uint32_t receivedBandwidthHz = 0;
