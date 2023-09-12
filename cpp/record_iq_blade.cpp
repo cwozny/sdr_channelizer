@@ -17,10 +17,8 @@
 #include <iterator>
 #include <execution>
 
-void getFilenameStr(char* filenameStr)
+void getFilenameStr(const std::chrono::system_clock::time_point now, char* filenameStr)
 {
-  // Get current time
-  const std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
   // Convert current time from chrono to time_t which goes down to second precision
   const std::time_t tt = std::chrono::system_clock::to_time_t(now);
   // Convert back to chrono so that we have a current time rounded to seconds
@@ -284,7 +282,7 @@ int main(const int argc, const char *argv[])
   std::int8_t* iq = iq_vec.data();
 
   const std::chrono::system_clock::time_point startTime = std::chrono::system_clock::now();
-  std::chrono::system_clock::time_point currentTime;
+  std::chrono::time_point currentTime = std::chrono::system_clock::now();
 
   do
   {
@@ -313,7 +311,9 @@ int main(const int argc, const char *argv[])
     memset(&meta, 0, sizeof(meta));
     meta.flags = BLADERF_META_FLAG_RX_NOW;
 
-    packet.sampleStartTime = (std::chrono::system_clock::now().time_since_epoch() / std::chrono::nanoseconds(1)) * 1e-9;
+    currentTime = std::chrono::system_clock::now();
+
+    packet.sampleStartTime = (currentTime.time_since_epoch() / std::chrono::nanoseconds(1)) * 1e-9;
 
     status = bladerf_sync_rx(dev, iq, sampleLength, &meta, 5000);
 
@@ -347,14 +347,12 @@ int main(const int argc, const char *argv[])
 
     packet.numSamples = meta.actual_count;
 
-    getFilenameStr(filenameStr);
+    getFilenameStr(currentTime, filenameStr);
 
     std::ofstream fout(filenameStr);
     fout.write((char*)&packet, sizeof(packet));
     fout.write((char*)iq, 2*packet.numSamples*sizeof(std::int8_t));
     fout.close();
-
-    currentTime = std::chrono::system_clock::now();
   }
   while(((currentTime - startTime) / std::chrono::milliseconds(1) * 1e-3) <= collectionDuration);
 
