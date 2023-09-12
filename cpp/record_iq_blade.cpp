@@ -117,15 +117,15 @@ int main(const int argc, const char *argv[])
 
   // Set relevant features of device
 
-  status = bladerf_enable_feature(dev, BLADERF_FEATURE_DEFAULT, true);
+  status = bladerf_enable_feature(dev, BLADERF_FEATURE_OVERSAMPLE, true);
 
   if (status == 0)
   {
-    std::cout << "Feature = DEFAULT" << std::endl;
+    std::cout << "Feature = OVERSAMPLE" << std::endl;
   }
   else
   {
-    std::cout << "Failed to set feature = DEFAULT: " << bladerf_strerror(status) << std::endl;
+    std::cout << "Failed to set feature = OVERSAMPLE: " << bladerf_strerror(status) << std::endl;
     bladerf_close(dev);
     return 1;
   }
