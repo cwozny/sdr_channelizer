@@ -9,6 +9,14 @@ project(SDR_Channelizer
             CXX
 )
 
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
+
+set(CMAKE_CXX_FLAGS "-Wall -Wextra")
+set(CMAKE_CXX_FLAGS_DEBUG "-g")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+
 add_executable (blade_recorder.out record_iq_blade.cpp)
 
 set_property(TARGET blade_recorder.out PROPERTY CXX_STANDARD 20)
