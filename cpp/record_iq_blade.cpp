@@ -197,21 +197,6 @@ int main(const int argc, const char *argv[])
     return 1;
   }
 
-  // Get gain of the device
-
-  status = bladerf_get_gain(dev, channel, &rxGain);
-
-  if (status == 0)
-  {
-    std::cout << "Gain = " << rxGain << " dB" << std::endl;
-  }
-  else
-  {
-    std::cout << "Failed to get gain: " << bladerf_strerror(status) << std::endl;
-    bladerf_close(dev);
-    return 1;
-  }
-
   // Compute the requested number of samples and buffer size
 
   const std::uint32_t sampleLength = dwellDuration*receivedSampleRate;
