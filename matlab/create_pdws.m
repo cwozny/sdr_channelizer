@@ -41,7 +41,7 @@ for ii = 1:length(listing)
         % I used median here instead of average because it is a "resistant
         % statistic".
         NOISE_FLOOR = median(mag);
-        SNR_THRESHOLD = 10 % dB
+        SNR_THRESHOLD = 12 % dB
         PULSE_THRESHOLD = NOISE_FLOOR*10^(SNR_THRESHOLD/10)
 
         fprintf('%s - Generating PDWs\n', datetime)
@@ -100,10 +100,22 @@ for ii = 1:length(listing)
                 end
             end
         end
+
+        pdw.sat = pdw.sat == 1;
+        pdw.d = datetime(1970,1,1,0,0,pdw.toa);
+
+        figure
+        plot(pdw.d,pdw.freq*1e-6,'.')
+        grid on
+        ylabel('Frequency (MHz)')
+        title(listing(ii).name,'Interpreter','none')
+
+        figure
+        plot(pdw.d,pdw.pw*1e6,'.')
+        grid on
+        ylabel('Pulse Width (us)')
+        title(listing(ii).name,'Interpreter','none')
     end
 end
-
-pdw.sat = pdw.sat == 1;
-pdw.d = datetime(1970,1,1,0,0,pdw.toa);
 
 save('pdw.mat','pdw','-v7.3')
