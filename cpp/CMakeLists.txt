@@ -1,10 +1,18 @@
-#find_package(LibBladeRF REQUIRED)
+cmake_minimum_required(VERSION 3.15.0)
 
-# Add executable called "helloDemo" that is built from the source files
-# "demo.cxx" and "demo_b.cxx". The extensions are automatically found.
+project(SDR_Channelizer
+          VERSION
+            1.0
+          DESCRIPTION
+            "TBD"
+          LANGUAGES
+            CXX
+)
+
 add_executable (blade_recorder.out record_iq_blade.cpp)
 
-# Link the executable to the Hello library. Since the Hello library has
-# public include directories we will use those link directories when building
-# helloDemo
-target_link_libraries (blade_recorder.out LINK_PUBLIC bladeRF)
+set_property(TARGET blade_recorder.out PROPERTY CXX_STANDARD 20)
+
+target_include_directories(blade_recorder.out PRIVATE /usr/local/include)
+
+target_link_libraries(blade_recorder.out PRIVATE /usr/local/lib/libbladeRF.dylib)
