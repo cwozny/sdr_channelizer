@@ -56,7 +56,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
   if (argc != 7)
   {
     std::cout << std::endl << "\tUsage:" << std::endl;
-    std::cout << "\t\t./usrp_recorder.out <freqMhz> <bwMhz> <sampleRateMsps> <gainDb> <dwellSec> <durationSec>" << std::endl;
+    std::cout << "\t\t./usrp_record_iq_12bit.out <freqMhz> <bwMhz> <sampleRateMsps> <gainDb> <dwellSec> <durationSec>" << std::endl;
     std::cout << std::endl;
     return 1;
   }
