@@ -1,1 +1,0 @@
-g++ record_iq_usrp.cpp -luhd -O3 -std=c++2a -ltbb -o usrp_recorder.out
