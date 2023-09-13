@@ -57,6 +57,15 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 	bool saturated = false;
 	std::uint32_t overrunCounter = 0;
 
+  if (argc != 8)
+  {
+    std::cout << std::endl << "\tUsage:" << std::endl;
+    std::cout << "\t\t./usrp_recorder.out <freqMhz> <bwMhz> <sampleRateMsps> <gainDb> <dwellSec> <durationSec> <autoGainReduction>" << std::endl;
+    std::cout << std::endl;
+    return 1;
+  }
+
+
 	const std::uint64_t frequencyHz = atof(argv[1])*1e6;
 	const std::uint32_t requestedBandwidthHz = atof(argv[2])*1e6;
 	std::uint32_t receivedBandwidthHz = 0;
@@ -65,6 +74,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 	std::int32_t rxGain = atoi(argv[4]);
 	const float dwellDuration = atof(argv[5]);
 	const float collectionDuration = atof(argv[6]);
+  const bool autoGainReduction = (atoi(argv[7]) != 0);
 
 	//create a usrp device
 
@@ -162,6 +172,8 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 	packet.bandwidthHz = receivedBandwidthHz;
 	packet.sampleRate = receivedSampleRate;
 	packet.numSamples = sampleLength;
+  packet.rxGain = rxGain;
+  packet.bitWidth = 16; // signed 16-bit integer
 
 	// Allocate the host buffer the device will be streaming to
 
@@ -175,15 +187,15 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 	do
 	{
 		// If we're saturated, then drop the receive gain down by 1 dB
-		if (saturated)
+		if (autoGainReduction && saturated)
 		{
 			usrp->set_rx_gain(--rxGain);
 			rxGain = usrp->get_rx_gain();
 
 			std::cout << "Gain = " << rxGain << " dB" << std::endl;
+        packet.rxGain = rxGain;
 		}
 
-		packet.rxGain = rxGain;
 		saturated = false;
 
 		memset(iq, 0, bufferSize*sizeof(std::int16_t));
@@ -229,7 +241,10 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 
 		std::cout << "Received " << num_accum_samps << std::endl;
 
-		// Look for instances of saturating to min or max value
+      // If we want to automatically reduce gain
+      if (autoGainReduction)
+      {
+        // Look for instances of samples saturated to min or max value
 #ifdef __linux__
         const auto [minSamp, maxSamp] = std::minmax_element(std::execution::par_unseq, std::begin(iq_vec), std::end(iq_vec));
 #elif __APPLE__
@@ -239,6 +254,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 #endif
 
 		saturated = (((*minSamp) <= SAMP_MIN) || ((*maxSamp) >= SAMP_MAX));
+		}
 
 		packet.numSamples = num_accum_samps;
 		packet.sampleStartTime = meta.time_spec.get_real_secs();
@@ -247,7 +263,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 
 		std::ofstream fout(filenameStr);
 		fout.write((char*)&packet, sizeof(packet));
-		fout.write((char*)iq, 2*num_accum_samps*sizeof(std::int16_t));
+		fout.write((char*)iq, 2*packet.numSamples*sizeof(std::int16_t));
 		fout.close();
 
 		currentTime = std::chrono::system_clock::now();
