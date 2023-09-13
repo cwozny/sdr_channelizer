@@ -51,7 +51,7 @@ int main(const int argc, const char *argv[])
   if (argc != 7)
   {
     std::cout << std::endl << "\tUsage:" << std::endl;
-    std::cout << "\t\t./blade_recorder.out <freqMhz> <bwMhz> <sampleRateMsps> <gainDb> <dwellSec> <durationSec>" << std::endl;
+    std::cout << "\t\t./blade_record_iq_08bit.out <freqMhz> <bwMhz> <sampleRateMsps> <gainDb> <dwellSec> <durationSec>" << std::endl;
     std::cout << std::endl;
     return 1;
   }
