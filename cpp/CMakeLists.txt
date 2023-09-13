@@ -27,6 +27,8 @@ target_link_libraries(blade_recorder.out PRIVATE /usr/local/lib/libbladeRF.dylib
 
 add_executable (usrp_recorder.out record_iq_usrp.cpp)
 
+find_package(UHD "4.5.0")
+
 set_property(TARGET usrp_recorder.out PROPERTY CXX_STANDARD 20)
 
 target_include_directories(usrp_recorder.out PRIVATE /opt/homebrew/include)
