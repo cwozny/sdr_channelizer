@@ -14,32 +14,11 @@
 
 #include <bit>
 #include <iostream>
-#include <fstream>
 #include <chrono>
 #include <algorithm>
 #include <vector>
 #include <iterator>
-
-void getFilenameStr(char* filenameStr)
-{
-  // Get current time
-  const std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
-  // Convert current time from chrono to time_t which goes down to second precision
-  const std::time_t tt = std::chrono::system_clock::to_time_t(now);
-  // Convert back to chrono so that we have a current time rounded to seconds
-  const std::chrono::system_clock::time_point nowSec = std::chrono::system_clock::from_time_t(tt);
-  tm utc_tm = *gmtime(&tt);
-
-  std::uint16_t year  = utc_tm.tm_year + 1900;
-  std::uint8_t month  = utc_tm.tm_mon + 1;
-  std::uint8_t day    = utc_tm.tm_mday;
-  std::uint8_t hour   = utc_tm.tm_hour;
-  std::uint8_t minute = utc_tm.tm_min;
-  std::uint8_t second = utc_tm.tm_sec;
-  std::uint16_t millisecond = (now-nowSec)/std::chrono::milliseconds(1);
-
-  snprintf(filenameStr, 80, "%04d_%02d_%02d_%02d_%02d_%02d_%03d.iq", year, month, day, hour, minute, second, millisecond);
-}
+#include <execution>
 
 int UHD_SAFE_MAIN(int argc, char *argv[])
 {
@@ -50,13 +29,15 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
   std::string ant("RX2");
   std::string ref("internal");
   IqPacket packet;
-  char filenameStr[80];
+  const std::int16_t SAMP_MAX = 32736;
+  const std::int16_t SAMP_MIN = -32736;
+  bool saturated = false;
   std::uint32_t overrunCounter = 0;
 
   if (argc != 7)
   {
     std::cout << std::endl << "\tUsage:" << std::endl;
-    std::cout << "\t\t./usrp_recorder.out <freqMhz> <bwMhz> <sampleRateMsps> <gainDb> <dwellSec> <durationSec>" << std::endl;
+    std::cout << "\t\t./usrp_find_max_unsaturated_gain.out <freqMhz> <bwMhz> <sampleRateMsps> <gainDb> <dwellSec> <durationSec>" << std::endl;
     std::cout << std::endl;
     return 1;
   }
@@ -145,21 +126,6 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
   stream_cmd.stream_now = true;
   stream_cmd.time_spec  = uhd::time_spec_t();
 
-  // Specify the endianness of the recording
-
-  if constexpr (std::endian::native == std::endian::big)
-  {
-    packet.endianness = 0x00000000;
-  }
-  else if constexpr (std::endian::native == std::endian::little)
-  {
-    packet.endianness = 0x01010101;
-  }
-  else
-  {
-    packet.endianness = 0xFFFFFFFF;
-  }
-
   // Set information about the recording for data analysis purposes
 
   packet.frequencyHz = frequencyHz;
@@ -180,6 +146,18 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 
   do
   {
+    // If we're saturated, then drop the receive gain down by 1 dB
+    if (saturated)
+    {
+      usrp->set_rx_gain(--rxGain);
+      rxGain = usrp->get_rx_gain();
+
+      std::cout << "Gain = " << rxGain << " dB" << std::endl;
+      packet.rxGain = rxGain;
+    }
+
+    saturated = false;
+
     memset(iq, 0, bufferSize*sizeof(std::int16_t));
 
     memset(&meta, 0, sizeof(meta));
@@ -223,15 +201,19 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 
     std::cout << "Received " << num_accum_samps << std::endl;
 
+    // Look for instances of samples saturated to min or max value
+#ifdef __linux__
+    const auto [minSamp, maxSamp] = std::minmax_element(std::execution::par_unseq, std::begin(iq_vec), std::end(iq_vec));
+#elif __APPLE__
+    const auto [minSamp, maxSamp] = std::minmax_element(std::begin(iq_vec), std::end(iq_vec));
+#else
+#error "Unsupported operating system!"
+#endif
+
+    saturated = (((*minSamp) <= SAMP_MIN) || ((*maxSamp) >= SAMP_MAX));
+
     packet.numSamples = num_accum_samps;
     packet.sampleStartTime = meta.time_spec.get_real_secs();
-
-    getFilenameStr(filenameStr);
-
-    std::ofstream fout(filenameStr);
-    fout.write((char*)&packet, sizeof(packet));
-    fout.write((char*)iq, 2*packet.numSamples*sizeof(std::int16_t));
-    fout.close();
 
     currentTime = std::chrono::system_clock::now();
   }
