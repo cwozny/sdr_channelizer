@@ -32,23 +32,20 @@ set_property(TARGET blade_find_max_unsaturated_gain.out PROPERTY CXX_STANDARD 17
 target_include_directories(blade_find_max_unsaturated_gain.out PRIVATE /usr/local/include)
 target_link_libraries(blade_find_max_unsaturated_gain.out PRIVATE /usr/local/lib/libbladeRF.dylib)
 
-find_package(UHD "4.5.0")
+find_package(UHD 4.5.0 REQUIRED)
 
 add_executable (usrp_record_iq_08bit.out usrp_record_iq_08bit.cpp)
 set_property(TARGET usrp_record_iq_08bit.out PROPERTY CXX_STANDARD 20)
-target_include_directories(usrp_record_iq_08bit.out PRIVATE /opt/homebrew/include)
-target_include_directories(usrp_record_iq_08bit.out PRIVATE /usr/local/include)
-target_link_libraries(usrp_record_iq_08bit.out PRIVATE /usr/local/lib/libuhd.dylib)
+target_include_directories(usrp_record_iq_08bit.out ‎${UHD_INCLUDE_DIRS})
+target_link_libraries(usrp_record_iq_08bit.out ${UHD_LIBRARIES})
 
 add_executable (usrp_record_iq_12bit.out usrp_record_iq_12bit.cpp)
 set_property(TARGET usrp_record_iq_12bit.out PROPERTY CXX_STANDARD 20)
-target_include_directories(usrp_record_iq_12bit.out PRIVATE /opt/homebrew/include)
-target_include_directories(usrp_record_iq_12bit.out PRIVATE /usr/local/include)
-target_link_libraries(usrp_record_iq_12bit.out PRIVATE /usr/local/lib/libuhd.dylib)
+target_include_directories(usrp_record_iq_12bit.out ‎${UHD_INCLUDE_DIRS}‎)
+target_link_libraries(usrp_record_iq_12bit.out ${UHD_LIBRARIES})
 
 add_executable (usrp_find_max_unsaturated_gain.out usrp_find_max_unsaturated_gain.cpp)
 set_property(TARGET usrp_find_max_unsaturated_gain.out PROPERTY CXX_STANDARD 20)
-target_include_directories(usrp_find_max_unsaturated_gain.out PRIVATE /opt/homebrew/include)
-target_include_directories(usrp_find_max_unsaturated_gain.out PRIVATE /usr/local/include)
-target_link_libraries(usrp_find_max_unsaturated_gain.out PRIVATE /usr/local/lib/libuhd.dylib)
+target_include_directories(usrp_find_max_unsaturated_gain.out ‎${UHD_INCLUDE_DIRS}‎)
+target_link_libraries(usrp_find_max_unsaturated_gain.out ${UHD_LIBRARIES})
 
