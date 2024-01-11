@@ -35,6 +35,8 @@ target_link_libraries(blade_find_max_unsaturated_gain.out PRIVATE /usr/local/lib
 find_package(UHD 4.5.0 REQUIRED)
 find_package(Boost 1.65 REQUIRED)
 
+message(UHD_INCLUDE_DIRS="${Boost_INCLUDE_DIRS}")
+message(UHD_LIBRARIES="${UHD_LIBRARIES}")
 message(Boost_INCLUDE_DIRS="${Boost_INCLUDE_DIRS}")
 
 add_executable (usrp_record_iq_08bit.out usrp_record_iq_08bit.cpp)
