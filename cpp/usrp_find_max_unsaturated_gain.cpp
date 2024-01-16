@@ -160,7 +160,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 
     memset(iq, 0, bufferSize*sizeof(std::int16_t));
 
-    memset(&meta, 0, sizeof(meta));
+    meta.reset();
 
     size_t num_accum_samps = 0;
 
