@@ -13,9 +13,6 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
-message("Shared module suffix = ${CMAKE_SHARED_MODULE_SUFFIX}")
-message("Shared library suffix = ${CMAKE_SHARED_LIBRARY_SUFFIX}")
-
 set(CMAKE_CXX_FLAGS "-Wall -Wextra")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
