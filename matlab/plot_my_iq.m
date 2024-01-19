@@ -41,7 +41,14 @@ for ii = 1:length(listing)
         fpgaVersion = string(fread(fid,32,'*char')');
         fwVersion = string(fread(fid,32,'*char')');
         sampleStartTime = fread(fid,1,'float64=>float64');
-        iq = fread(fid,[2,inf],'int8=>int8');
+
+        if bitWidth <= 8
+            iq = fread(fid,[2,inf],'int8=>int8');
+        elseif bitWidth <= 16
+            iq = fread(fid,[2,inf],'int16=>int16');
+        else
+            error('Unsupported A/D bit width')
+        end
 
         fclose(fid);
 
