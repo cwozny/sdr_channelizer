@@ -7,70 +7,94 @@ fprintf('%s - Clearing everything out\n', datetime)
 clear all
 close all
 
-%% Load data
+%% Create list of files to read in
 
-listing = dir(uigetdir('../cpp'));
+indir = uigetdir('../cpp');
+
+listing = dir(indir);
+
+files = string([]);
+idx = 1;
 
 for ii = 1:length(listing)
     if contains(listing(ii).name,'.iq')
+        files(idx) = listing(ii).name;
+        idx = idx + 1;
+    end
+end
 
-        fprintf('%s - Reading %s\n', datetime, listing(ii).name)
+outdir = uigetdir(indir);
 
-        fid = fopen(fullfile(listing(ii).folder,listing(ii).name),"r");
+%% Load data
 
-        endianness = fread(fid,1,'uint32=>uint32');
+hWait = waitbar(0,'Please wait...');
 
-        if endianness == 0x00000000
-            fprintf('%s - Reading in big endian file\n', datetime)
-        elseif endianness == 0x01010101
-            fprintf('%s - Reading in little endian file\n', datetime)
-        else
-            warning('%s - Reading in file with unknown endianness\n', datetime)
-        end
+for ii = 1:length(files)
 
-        linkSpeed = fread(fid,1,'uint32=>uint32');
-        fc = fread(fid,1,'uint32=>float64');
-        bw = fread(fid,1,'uint32=>float64');
-        fs = fread(fid,1,'uint32=>float64');
-        gain = fread(fid,1,'uint32=>float64');
-        numSamples = fread(fid,1,'uint32=>float64');
-        bitWidth = fread(fid,1,'uint32=>uint32');
-        fpgaVersion = string(fread(fid,32,'*char')');
-        fwVersion = string(fread(fid,32,'*char')');
-        sampleStartTime = fread(fid,1,'float64=>float64');
+    fprintf('%s - Reading %s\n', datetime, files(ii))
 
-        if 0 < bitWidth && bitWidth <= 8
-            iq = fread(fid,[2,inf],'int8=>int8');
-        elseif 8 < bitWidth && bitWidth <= 16
-            iq = fread(fid,[2,inf],'int16=>int16');
-        else
-            error('Unsupported bit width');
-        end
+    waitbar(ii/length(files),hWait,sprintf('%1.3f%% - %d/%d - Reading %s', ii/length(files), ii, length(files), files(ii)));
 
-        fclose(fid);
+    fid = fopen(fullfile(indir,files(ii)),"r");
 
-        assert(length(iq) == numSamples)
+    endianness = fread(fid,1,'uint32=>uint32');
 
-        %% Compute duration
-
-        dur = length(iq)/fs;
-
-        %% Saving data
-
-        fprintf('%s - Saving I/Q\n', datetime)
-
-        [filepath,name,ext] = fileparts(listing(ii).name);
-
-        save(sprintf('%s.mat',name),'iq','fs','fc','dur','bw','gain','bitWidth','sampleStartTime','linkSpeed','fpgaVersion','fwVersion','-v7.3')
-
-        clear iq
-        clear fs
-        clear fc
-        clear dur
-
-        %% Done
-
-        fprintf('%s - Done\n', datetime)
+    if endianness == 0x00000000
+        fprintf('%s - Reading in big endian file\n', datetime)
+    elseif endianness == 0x01010101
+        fprintf('%s - Reading in little endian file\n', datetime)
+    else
+        warning('%s - Reading in file with unknown endianness\n', datetime)
     end
 
+    linkSpeed = fread(fid,1,'uint32=>uint32');
+    fc = fread(fid,1,'uint32=>float64');
+    bw = fread(fid,1,'uint32=>float64');
+    fs = fread(fid,1,'uint32=>float64');
+    gain = fread(fid,1,'uint32=>float64');
+    numSamples = fread(fid,1,'uint32=>float64');
+    bitWidth = fread(fid,1,'uint32=>uint32');
+    fpgaVersion = string(fread(fid,32,'*char')');
+    fwVersion = string(fread(fid,32,'*char')');
+    sampleStartTime = fread(fid,1,'float64=>float64');
+
+    if 0 < bitWidth && bitWidth <= 8
+        iq = fread(fid,[2,inf],'int8=>int8');
+    elseif 8 < bitWidth && bitWidth <= 16
+        iq = fread(fid,[2,inf],'int16=>int16');
+    else
+        error('Unsupported bit width');
+    end
+
+    fclose(fid);
+
+    assert(length(iq) == numSamples)
+
+    %% Compute duration
+
+    dur = length(iq)/fs;
+
+    %% Saving data
+
+    fprintf('%s - Saving I/Q\n', datetime)
+
+    [filepath,name,ext] = fileparts(files(ii));
+
+    filename = sprintf('%s.mat',name);
+
+    waitbar(ii/length(files),hWait,sprintf('%1.3f%% - %d/%d - Saving %s', ii/length(files), ii, length(files), filename));
+
+    save(fullfile(outdir,filename),'iq','fs','fc','dur','bw','gain','bitWidth','sampleStartTime','linkSpeed','fpgaVersion','fwVersion','-v7.3')
+
+    clear iq
+    clear fs
+    clear fc
+    clear dur
+
+    %% Done
+
+    fprintf('%s - Done\n', datetime)
+
 end
+
+close(hWait);
