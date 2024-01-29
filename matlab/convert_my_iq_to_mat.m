@@ -33,7 +33,7 @@ for ii = 1:length(files)
 
     fprintf('%s - Reading %s\n', datetime, files(ii))
 
-    waitbar(ii/length(files),hWait,sprintf('%1.3f%% - %d/%d - Reading %s', ii/length(files), ii, length(files), strrep(files(ii),'_','\_')));
+    waitbar(ii/length(files),hWait,sprintf('%1.3f%% - %d/%d - Reading %s', 100*ii/length(files), ii, length(files), strrep(files(ii),'_','\_')));
 
     fid = fopen(fullfile(indir,files(ii)),"r");
 
@@ -82,7 +82,7 @@ for ii = 1:length(files)
 
     filename = sprintf('%s.mat',name);
 
-    waitbar(ii/length(files),hWait,sprintf('%1.3f%% - %d/%d - Saving %s', ii/length(files), ii, length(files), strrep(filename,'_','\_')));
+    waitbar(ii/length(files),hWait,sprintf('%1.3f%% - %d/%d - Saving %s', 100*ii/length(files), ii, length(files), strrep(filename,'_','\_')));
 
     save(fullfile(outdir,filename),'iq','fs','fc','dur','bw','gain','bitWidth','sampleStartTime','linkSpeed','fpgaVersion','fwVersion','-v7.3')
 
