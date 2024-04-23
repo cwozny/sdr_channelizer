@@ -86,7 +86,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 
   uhd::dict<std::string, std::string> rx_info = usrp->get_usrp_rx_info();
 
-  std::cout << "Using " << usrp->get_mboard_name() << " serial number " << rx_info.get("rx_serial") << std::endl;
+  std::cout << "Using " << usrp->get_mboard_name() << " serial number " << rx_info.get("mboard_serial") << std::endl;
 
   // Set center frequency of device
 
