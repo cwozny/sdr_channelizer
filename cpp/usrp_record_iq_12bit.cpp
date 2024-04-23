@@ -184,6 +184,8 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 
     meta.reset();
 
+    bool firstSample = true;
+
     size_t num_accum_samps = 0;
 
     stream_cmd.stream_mode = uhd::stream_cmd_t::STREAM_MODE_START_CONTINUOUS;
@@ -192,9 +194,16 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
     while(num_accum_samps < sampleLength)
     {
       const std::int32_t startIndex = 2*num_accum_samps;
-      const std::int32_t remainingSize = 2*sampleLength-(2*num_accum_samps);
+      const std::int32_t remainingSize = 2*(sampleLength-num_accum_samps);
 
       num_accum_samps += rx_stream->recv(&iq[startIndex], remainingSize, meta, 5.0, true);
+
+      // Only set the packet's sample start time on the first receive call
+      if (firstSample == true)
+      {
+        packet.sampleStartTime = meta.time_spec.get_real_secs();
+        firstSample = false;
+      }
 
       // Handle streaming error codes
       switch (meta.error_code)
@@ -224,7 +233,6 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
     std::cout << "Received " << num_accum_samps << std::endl;
 
     packet.numSamples = num_accum_samps;
-    packet.sampleStartTime = meta.time_spec.get_real_secs();
 
     getFilenameStr(filenameStr);
 
