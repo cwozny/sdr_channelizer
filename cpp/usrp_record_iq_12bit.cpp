@@ -80,13 +80,17 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
   //always select the subdevice first, the channel mapping affects the other settings
   usrp->set_rx_subdev_spec(subdev);
 
-  std::cout << "FPGA version: " << packet.fpgaVersion << std::endl;
+  // Save off information about the device being used
 
-  std::cout << "Firmware version: " << packet.fwVersion << std::endl;
+  strncpy(packet.userDefined[0], usrp->get_mboard_name().c_str(), sizeof(packet.userDefined[0]));
+
+  std::cout << "Board name: " << packet.userDefined[0] << std::endl;
 
   uhd::dict<std::string, std::string> rx_info = usrp->get_usrp_rx_info();
 
-  std::cout << "Using " << usrp->get_mboard_name() << " serial number " << rx_info.get("mboard_serial") << std::endl;
+  strncpy(packet.userDefined[1], rx_info.get("mboard_serial").c_str(), sizeof(packet.userDefined[1]));
+
+  std::cout << "Serial number: " << packet.userDefined[1] << std::endl;
 
   // Set center frequency of device
 

@@ -13,8 +13,7 @@ struct IqPacket
   std::uint32_t rxGain;
   std::uint32_t numSamples;
   std::uint32_t bitWidth;
-  char fpgaVersion[32];
-  char fwVersion[32];
+  char userDefined[4][16];
   double sampleStartTime;
 };
 

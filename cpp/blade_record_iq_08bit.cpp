@@ -92,21 +92,29 @@ int main(const int argc, const char *argv[])
     std::cout << "Negotiated unknown link speed" << std::endl;
   }
 
-  bladerf_fpga_version(dev, &version);
-
-  strncpy(packet.fpgaVersion, version.describe, sizeof(packet.fpgaVersion));
-
-  std::cout << "FPGA version: " << packet.fpgaVersion << std::endl;
-
-  bladerf_fw_version(dev, &version);
-
-  strncpy(packet.fwVersion, version.describe, sizeof(packet.fwVersion));
-
-  std::cout << "Firmware version: " << packet.fwVersion << std::endl;
+  // Save off information about the device being used
 
   bladerf_get_serial_struct(dev, &serNo);
 
-  std::cout << "Using " << bladerf_get_board_name(dev) << " serial number " << serNo.serial << std::endl;
+  strncpy(packet.userDefined[0], bladerf_get_board_name(dev), sizeof(packet.userDefined[0]));
+
+  std::cout << "Board name: " << packet.userDefined[0] << std::endl;
+
+  strncpy(packet.userDefined[1], serNo.serial, sizeof(packet.userDefined[1]));
+
+  std::cout << "Serial number: " << packet.userDefined[1] << std::endl;
+
+  bladerf_fpga_version(dev, &version);
+
+  strncpy(packet.userDefined[2], version.describe, sizeof(packet.userDefined[2]));
+
+  std::cout << "FPGA version: " << packet.userDefined[2] << std::endl;
+
+  bladerf_fw_version(dev, &version);
+
+  strncpy(packet.userDefined[3], version.describe, sizeof(packet.userDefined[3]));
+
+  std::cout << "Firmware version: " << packet.userDefined[3] << std::endl;
 
   // Set relevant features of device
 
