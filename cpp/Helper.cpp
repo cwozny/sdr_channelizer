@@ -1,7 +1,7 @@
 #include "Helper.h"
 
 #include <ctime>
-#include <cstring>
+#include <cstdio>
 
 void getFilenameStr(const std::chrono::system_clock::time_point now, char* filenameStr, const int filenameLength)
 {
