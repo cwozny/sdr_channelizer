@@ -8,9 +8,9 @@
 #include <boost/thread.hpp>
 
 #include "IqPacket.h"
+#include "Helper.h"
 
 #include <cstring>
-#include <ctime>
 
 #include <bit>
 #include <iostream>
@@ -19,27 +19,6 @@
 #include <algorithm>
 #include <vector>
 #include <iterator>
-
-void getFilenameStr(char* filenameStr)
-{
-  // Get current time
-  const std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
-  // Convert current time from chrono to time_t which goes down to second precision
-  const std::time_t tt = std::chrono::system_clock::to_time_t(now);
-  // Convert back to chrono so that we have a current time rounded to seconds
-  const std::chrono::system_clock::time_point nowSec = std::chrono::system_clock::from_time_t(tt);
-  tm utc_tm = *gmtime(&tt);
-
-  std::uint16_t year  = utc_tm.tm_year + 1900;
-  std::uint8_t month  = utc_tm.tm_mon + 1;
-  std::uint8_t day    = utc_tm.tm_mday;
-  std::uint8_t hour   = utc_tm.tm_hour;
-  std::uint8_t minute = utc_tm.tm_min;
-  std::uint8_t second = utc_tm.tm_sec;
-  std::uint16_t millisecond = (now-nowSec)/std::chrono::milliseconds(1);
-
-  snprintf(filenameStr, 80, "%04d_%02d_%02d_%02d_%02d_%02d_%03d.iq", year, month, day, hour, minute, second, millisecond);
-}
 
 int UHD_SAFE_MAIN(int argc, char *argv[])
 {
@@ -50,7 +29,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
   std::string ant("RX2");
   std::string ref("internal");
   IqPacket packet;
-  char filenameStr[80];
+  char filenameStr[FILENAME_LENGTH];
   std::uint32_t overrunCounter = 0;
 
   if (argc != 7)
@@ -238,7 +217,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 
     packet.numSamples = num_accum_samps;
 
-    getFilenameStr(filenameStr);
+    getFilenameStr(currentTime, filenameStr, FILENAME_LENGTH);
 
     std::ofstream fout(filenameStr);
     fout.write((char*)&packet, sizeof(packet));
