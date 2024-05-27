@@ -35,7 +35,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
   if (argc != 7)
   {
     std::cout << std::endl << "\tUsage:" << std::endl;
-    std::cout << "\t\t./usrp_record_iq_12bit.out <freqMhz> <bwMhz> <sampleRateMsps> <gainDb> <dwellSec> <durationSec>" << std::endl;
+    std::cout << "\t\t" << argv[0] << " <freqMhz> <bwMhz> <sampleRateMsps> <gainDb> <dwellSec> <durationSec>" << std::endl;
     std::cout << std::endl;
     return 1;
   }
@@ -113,20 +113,20 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
   // Set up the configuration parameters necessary to receive samples with the device
 
   // create a receive streamer
-  uhd::stream_args_t stream_args("sc16","sc12"); // 16-bit integers on host, 12-bit over-the-wire
+  uhd::stream_args_t stream_args("sc16","sc12"); // 16-bit integers on host, 12-bit integers over-the-wire
   uhd::rx_streamer::sptr rx_stream = usrp->get_rx_stream(stream_args);
-  const std::uint32_t maxSampsPerBuffer = rx_stream->get_max_num_samps();
 
   // Compute the requested number of samples and buffer size
 
-  const std::uint32_t sampleLength = dwellDuration*receivedSampleRate;
-  const std::uint32_t bufferSize = 2*(sampleLength+maxSampsPerBuffer);
+  const std::uint64_t requested_num_samples = dwellDuration*receivedSampleRate;
+  const std::uint64_t bufferSize = 2*requested_num_samples;
 
   // setup streaming
-  uhd::stream_cmd_t stream_cmd(uhd::stream_cmd_t::STREAM_MODE_STOP_CONTINUOUS);
-  stream_cmd.num_samps  = sampleLength;
+  uhd::stream_cmd_t stream_cmd(uhd::stream_cmd_t::STREAM_MODE_NUM_SAMPS_AND_DONE);
+
+  stream_cmd.num_samps = requested_num_samples;
   stream_cmd.stream_now = true;
-  stream_cmd.time_spec  = uhd::time_spec_t();
+  stream_cmd.time_spec  = usrp->get_time_now();
 
   // Specify the endianness of the recording
 
@@ -148,7 +148,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
   packet.frequencyHz = frequencyHz;
   packet.bandwidthHz = receivedBandwidthHz;
   packet.sampleRate = receivedSampleRate;
-  packet.numSamples = sampleLength;
+  packet.numSamples = requested_num_samples;
   packet.rxGain = rxGain;
   packet.bitWidth = 16; // signed 16-bit integer
 
@@ -163,59 +163,40 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 
   do
   {
-    memset(iq, 0, bufferSize*sizeof(std::int16_t));
-
     meta.reset();
 
-    bool firstSample = true;
+    stream_cmd.stream_mode = uhd::stream_cmd_t::STREAM_MODE_NUM_SAMPS_AND_DONE;
 
-    size_t num_accum_samps = 0;
-
-    stream_cmd.stream_mode = uhd::stream_cmd_t::STREAM_MODE_START_CONTINUOUS;
     rx_stream->issue_stream_cmd(stream_cmd);
 
-    while(num_accum_samps < sampleLength)
-    {
-      const std::int32_t startIndex = 2*num_accum_samps;
-      const std::int32_t remainingSize = 2*(sampleLength-num_accum_samps);
-
-      num_accum_samps += rx_stream->recv(&iq[startIndex], remainingSize, meta, 5.0, true);
-
-      // Only set the packet's sample start time on the first receive call
-      if (firstSample == true)
-      {
-        packet.sampleStartTime = meta.time_spec.get_real_secs();
-        firstSample = false;
-      }
-
-      // Handle streaming error codes
-      switch (meta.error_code)
-      {
-          // No errors
-        case uhd::rx_metadata_t::ERROR_CODE_NONE:
-          break;
-
-        case uhd::rx_metadata_t::ERROR_CODE_TIMEOUT: // I get this error on the expected last iteration of the while loop
-          std::cout << "ERROR_CODE_TIMEOUT: Got timeout before all samples received" << std::endl;
-          break;
-
-        case uhd::rx_metadata_t::ERROR_CODE_OVERFLOW:
-          overrunCounter++;
-          std::cout << "ERROR_CODE_OVERFLOW: Overflowed" << std::endl;
-          break;
-
-        default:
-          std::cout << "Got error code: " << meta.strerror() << std::endl;
-          break;
-      }
-    }
+    packet.numSamples = rx_stream->recv(&iq[0], requested_num_samples, meta, 0.5, false);
+    packet.sampleStartTime = meta.time_spec.get_real_secs();
 
     stream_cmd.stream_mode = uhd::stream_cmd_t::STREAM_MODE_STOP_CONTINUOUS;
+
     rx_stream->issue_stream_cmd(stream_cmd);
 
-    std::cout << "Received " << num_accum_samps << std::endl;
+    std::cout << "Received " << packet.numSamples << std::endl;
 
-    packet.numSamples = num_accum_samps;
+    // Handle streaming error codes
+    switch (meta.error_code)
+    {
+      case uhd::rx_metadata_t::ERROR_CODE_NONE:
+        break;
+
+      case uhd::rx_metadata_t::ERROR_CODE_TIMEOUT:
+        std::cout << "ERROR_CODE_TIMEOUT: Got timeout before all samples received" << std::endl;
+        break;
+
+      case uhd::rx_metadata_t::ERROR_CODE_OVERFLOW:
+        overrunCounter++;
+        std::cout << "ERROR_CODE_OVERFLOW: Overflowed" << std::endl;
+        break;
+
+      default:
+        std::cout << "Got error code: " << meta.strerror() << std::endl;
+        break;
+    }
 
     getFilenameStr(currentTime, filenameStr, FILENAME_LENGTH);
 
