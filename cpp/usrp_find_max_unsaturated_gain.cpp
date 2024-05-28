@@ -7,18 +7,14 @@
 #include <boost/format.hpp>
 #include <boost/thread.hpp>
 
-#include "IqPacket.h"
+#include "Helper.h"
 
 #include <cstring>
-#include <ctime>
 
-#include <bit>
 #include <iostream>
+#include <fstream>
 #include <chrono>
-#include <algorithm>
 #include <vector>
-#include <iterator>
-#include <execution>
 
 int UHD_SAFE_MAIN(int argc, char *argv[])
 {
@@ -28,16 +24,13 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
   std::string subdev("A:A");
   std::string ant("RX2");
   std::string ref("internal");
-  IqPacket packet;
-  const std::int16_t SAMP_MAX = 32736;
-  const std::int16_t SAMP_MIN = -32736;
+  const std::int16_t SAMP_MAX = 32767;
   bool saturated = false;
-  std::uint32_t overrunCounter = 0;
 
   if (argc != 7)
   {
     std::cout << std::endl << "\tUsage:" << std::endl;
-    std::cout << "\t\t./usrp_find_max_unsaturated_gain.out <freqMhz> <bwMhz> <sampleRateMsps> <gainDb> <dwellSec> <durationSec>" << std::endl;
+    std::cout << "\t\t" << argv[0] << " <freqMhz> <bwMhz> <sampleRateMsps> <gainDb> <dwellSec> <durationSec>" << std::endl;
     std::cout << std::endl;
     return 1;
   }
@@ -61,13 +54,13 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
   //always select the subdevice first, the channel mapping affects the other settings
   usrp->set_rx_subdev_spec(subdev);
 
-  std::cout << "FPGA version: " << packet.fpgaVersion << std::endl;
+  // Save off information about the device being used
 
-  std::cout << "Firmware version: " << packet.fwVersion << std::endl;
+  std::cout << "Board name: " << usrp->get_mboard_name() << std::endl;
 
   uhd::dict<std::string, std::string> rx_info = usrp->get_usrp_rx_info();
 
-  std::cout << "Using " << usrp->get_mboard_name() << " serial number " << rx_info.get("rx_serial") << std::endl;
+  std::cout << "Serial number: " << rx_info.get("mboard_serial") << std::endl;
 
   // Set center frequency of device
 
@@ -111,29 +104,20 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
   // Set up the configuration parameters necessary to receive samples with the device
 
   // create a receive streamer
-  uhd::stream_args_t stream_args("sc16","sc12"); // 16-bit integers on host, 12-bit over-the-wire
+  uhd::stream_args_t stream_args("sc16","sc12"); // 16-bit integers on host, 12-bit integers over-the-wire
   uhd::rx_streamer::sptr rx_stream = usrp->get_rx_stream(stream_args);
-  const std::uint32_t maxSampsPerBuffer = rx_stream->get_max_num_samps();
 
   // Compute the requested number of samples and buffer size
 
-  const std::uint32_t sampleLength = dwellDuration*receivedSampleRate;
-  const std::uint32_t bufferSize = 2*(sampleLength+maxSampsPerBuffer);
+  const std::uint64_t requested_num_samples = dwellDuration*receivedSampleRate;
+  const std::uint64_t bufferSize = 2*requested_num_samples;
 
   // setup streaming
-  uhd::stream_cmd_t stream_cmd(uhd::stream_cmd_t::STREAM_MODE_STOP_CONTINUOUS);
-  stream_cmd.num_samps  = sampleLength;
+  uhd::stream_cmd_t stream_cmd(uhd::stream_cmd_t::STREAM_MODE_NUM_SAMPS_AND_DONE);
+
+  stream_cmd.num_samps = requested_num_samples;
   stream_cmd.stream_now = true;
-  stream_cmd.time_spec  = uhd::time_spec_t();
-
-  // Set information about the recording for data analysis purposes
-
-  packet.frequencyHz = frequencyHz;
-  packet.bandwidthHz = receivedBandwidthHz;
-  packet.sampleRate = receivedSampleRate;
-  packet.numSamples = sampleLength;
-  packet.rxGain = rxGain;
-  packet.bitWidth = 16; // signed 16-bit integer
+  stream_cmd.time_spec  = usrp->get_time_now();
 
   // Allocate the host buffer the device will be streaming to
 
@@ -147,86 +131,50 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
   do
   {
     // If we're saturated, then drop the receive gain down by 1 dB
-    if (saturated)
+    if (saturated == true)
     {
       usrp->set_rx_gain(--rxGain);
       rxGain = usrp->get_rx_gain();
-
-      std::cout << "Gain = " << rxGain << " dB" << std::endl;
-      packet.rxGain = rxGain;
     }
 
     saturated = false;
 
-    memset(iq, 0, bufferSize*sizeof(std::int16_t));
+    stream_cmd.stream_mode = uhd::stream_cmd_t::STREAM_MODE_NUM_SAMPS_AND_DONE;
 
-    meta.reset();
-
-    size_t num_accum_samps = 0;
-
-    stream_cmd.stream_mode = uhd::stream_cmd_t::STREAM_MODE_START_CONTINUOUS;
     rx_stream->issue_stream_cmd(stream_cmd);
 
-    while(num_accum_samps < sampleLength)
-    {
-      const std::int32_t startIndex = 2*num_accum_samps;
-      const std::int32_t remainingSize = 2*sampleLength-(2*num_accum_samps);
-
-      num_accum_samps += rx_stream->recv(&iq[startIndex], remainingSize, meta, 5.0, true);
-
-      // Handle streaming error codes
-      switch (meta.error_code)
-      {
-          // No errors
-        case uhd::rx_metadata_t::ERROR_CODE_NONE:
-          break;
-
-        case uhd::rx_metadata_t::ERROR_CODE_TIMEOUT: // I get this error on the expected last iteration of the while loop
-          std::cout << "ERROR_CODE_TIMEOUT: Got timeout before all samples received" << std::endl;
-          break;
-
-        case uhd::rx_metadata_t::ERROR_CODE_OVERFLOW:
-          overrunCounter++;
-          std::cout << "ERROR_CODE_OVERFLOW: Overflowed" << std::endl;
-          break;
-
-        default:
-          std::cout << "Got error code: " << meta.strerror() << std::endl;
-          break;
-      }
-    }
+    const std::uint64_t received_num_samples = rx_stream->recv(&iq[0], requested_num_samples, meta, 0.5, false);
 
     stream_cmd.stream_mode = uhd::stream_cmd_t::STREAM_MODE_STOP_CONTINUOUS;
+
     rx_stream->issue_stream_cmd(stream_cmd);
 
-    std::cout << "Received " << num_accum_samps << std::endl;
+    if (meta.error_code == uhd::rx_metadata_t::ERROR_CODE_NONE && requested_num_samples == received_num_samples)
+    {
+        std::cout << "Gain = " << rxGain << " dB" << std::endl;
+        std::cout << "Received " << received_num_samples << std::endl;
 
-    // Look for instances of samples saturated to min or max value
-#ifdef __linux__
-    const auto [minSamp, maxSamp] = std::minmax_element(std::execution::par_unseq, std::begin(iq_vec), std::end(iq_vec));
-#elif __APPLE__
-    const auto [minSamp, maxSamp] = std::minmax_element(std::begin(iq_vec), std::end(iq_vec));
-#else
-#error "Unsupported operating system!"
-#endif
+        for (std::uint64_t ii = 0; ii < bufferSize; ii++)
+        {
+            if (iq[ii] >= (0.95 * SAMP_MAX))
+            {
+                std::cout << iq[ii] << std::endl;
+                saturated = true;
+                break;
+            }
 
-    saturated = (((*minSamp) <= SAMP_MIN) || ((*maxSamp) >= SAMP_MAX));
-
-    packet.numSamples = num_accum_samps;
-    packet.sampleStartTime = meta.time_spec.get_real_secs();
+            if(iq[ii] <= (-0.95 * SAMP_MAX))
+            {
+                std::cout << iq[ii] << std::endl;
+                saturated = true;
+                break;
+            }
+        }
+    }
 
     currentTime = std::chrono::system_clock::now();
   }
   while(((currentTime - startTime) / std::chrono::milliseconds(1) * 1e-3) <= collectionDuration);
-
-  // Disable the device
-
-  stream_cmd.stream_mode = uhd::stream_cmd_t::STREAM_MODE_STOP_CONTINUOUS;
-  rx_stream->issue_stream_cmd(stream_cmd);
-
-  std::cout << "Disabled RX" << std::endl;
-
-  std::cout << "There were " << overrunCounter << " overruns." << std::endl;
 
   return status;
 }
