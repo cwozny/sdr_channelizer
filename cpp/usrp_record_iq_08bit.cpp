@@ -198,23 +198,19 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
         break;
     }
 
-    getFilenameStr(currentTime, filenameStr, FILENAME_LENGTH);
+    if (packet.numSamples == requested_num_samples)
+    {
+      getFilenameStr(currentTime, filenameStr, FILENAME_LENGTH);
 
-    std::ofstream fout(filenameStr);
-    fout.write((char*)&packet, sizeof(packet));
-    fout.write((char*)iq, 2*packet.numSamples*sizeof(std::int8_t));
-    fout.close();
+      std::ofstream fout(filenameStr);
+      fout.write((char*)&packet, sizeof(packet));
+      fout.write((char*)iq, 2*packet.numSamples*sizeof(std::int8_t));
+      fout.close();
+    }
 
     currentTime = std::chrono::system_clock::now();
   }
   while(((currentTime - startTime) / std::chrono::milliseconds(1) * 1e-3) <= collectionDuration);
-
-  // Disable the device
-
-  stream_cmd.stream_mode = uhd::stream_cmd_t::STREAM_MODE_STOP_CONTINUOUS;
-  rx_stream->issue_stream_cmd(stream_cmd);
-
-  std::cout << "Disabled RX" << std::endl;
 
   std::cout << "There were " << overrunCounter << " overruns." << std::endl;
 
