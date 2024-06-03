@@ -166,8 +166,8 @@ int main(const int argc, const char *argv[])
 
   // Compute the requested number of samples and buffer size
 
-  const std::uint32_t sampleLength = dwellDuration*receivedSampleRate;
-  const std::uint32_t bufferSize = 2*sampleLength;
+  const std::uint64_t requested_num_samples = dwellDuration*receivedSampleRate;
+  const std::uint64_t bufferSize = 2*requested_num_samples;
 
   // Set up the configuration parameters necessary to receive samples with the device
 
@@ -245,7 +245,7 @@ int main(const int argc, const char *argv[])
 
     currentTime = std::chrono::system_clock::now();
 
-    status = bladerf_sync_rx(dev, iq, sampleLength, &meta, 5000);
+    status = bladerf_sync_rx(dev, iq, requested_num_samples, &meta, 5000);
 
     if (status != 0)
     {

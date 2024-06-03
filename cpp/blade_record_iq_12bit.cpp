@@ -186,8 +186,8 @@ int main(const int argc, const char *argv[])
 
   // Compute the requested number of samples and buffer size
 
-  const std::uint32_t sampleLength = dwellDuration*receivedSampleRate;
-  const std::uint32_t bufferSize = 2*sampleLength;
+  const std::uint64_t requested_num_samples = dwellDuration*receivedSampleRate;
+  const std::uint64_t bufferSize = 2*requested_num_samples;
 
   // Set up the configuration parameters necessary to receive samples with the device
 
@@ -252,7 +252,6 @@ int main(const int argc, const char *argv[])
   packet.frequencyHz = frequencyHz;
   packet.bandwidthHz = receivedBandwidthHz;
   packet.sampleRate = receivedSampleRate;
-  packet.numSamples = sampleLength;
   packet.rxGain = rxGain;
   packet.bitWidth = 12; // signed 12-bit integer
 
@@ -272,7 +271,7 @@ int main(const int argc, const char *argv[])
 
     packet.sampleStartTime = (currentTime.time_since_epoch() / std::chrono::nanoseconds(1)) * 1e-9;
 
-    status = bladerf_sync_rx(dev, iq, sampleLength, &meta, 5000);
+    status = bladerf_sync_rx(dev, iq, requested_num_samples, &meta, 5000);
 
     if (status != 0)
     {
@@ -290,7 +289,7 @@ int main(const int argc, const char *argv[])
 
     packet.numSamples = meta.actual_count;
 
-    if (packet.numSamples == sampleLength)
+    if (packet.numSamples == requested_num_samples)
     {
       getFilenameStr(currentTime, filenameStr, FILENAME_LENGTH);
 
