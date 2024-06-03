@@ -9,6 +9,8 @@ project(SDR_Channelizer
             CXX
 )
 
+set(CMAKE_VERBOSE_MAKEFILE ON)
+
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
