@@ -1,24 +1,14 @@
-#include <uhd/utils/thread.hpp>
 #include <uhd/utils/safe_main.hpp>
 #include <uhd/usrp/multi_usrp.hpp>
-#include <uhd/exception.hpp>
-#include <uhd/types/tune_request.hpp>
-#include <boost/program_options.hpp>
-#include <boost/format.hpp>
-#include <boost/thread.hpp>
 
 #include "IqPacket.h"
 #include "Helper.h"
 
 #include <cstring>
 
-#include <bit>
 #include <iostream>
 #include <fstream>
 #include <chrono>
-#include <algorithm>
-#include <vector>
-#include <iterator>
 
 int UHD_SAFE_MAIN(int argc, char *argv[])
 {
@@ -154,9 +144,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 
   // Allocate the host buffer the device will be streaming to
 
-  std::vector<std::int16_t> iq_vec;
-  iq_vec.resize(bufferSize, 0);
-  std::int16_t* iq = iq_vec.data();
+  std::int16_t* iq = new std::int16_t[bufferSize];
 
   const std::chrono::system_clock::time_point startTime = std::chrono::system_clock::now();
   std::chrono::system_clock::time_point currentTime;
