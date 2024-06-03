@@ -52,7 +52,7 @@ target_include_directories(usrp_record_iq_12bit.out PRIVATE ${Boost_INCLUDE_DIRS
 target_link_libraries(usrp_record_iq_12bit.out ${UHD_LIBRARIES})
 
 add_executable (usrp_find_max_unsaturated_gain.out usrp_find_max_unsaturated_gain.cpp)
-set_property(TARGET usrp_find_max_unsaturated_gain.out PROPERTY CXX_STANDARD 11)
+set_property(TARGET usrp_find_max_unsaturated_gain.out PROPERTY CXX_STANDARD 17)
 target_include_directories(usrp_find_max_unsaturated_gain.out PRIVATE ${Boost_INCLUDE_DIRS} ${UHD_INCLUDE_DIRS})
 target_link_libraries(usrp_find_max_unsaturated_gain.out ${UHD_LIBRARIES})
 
