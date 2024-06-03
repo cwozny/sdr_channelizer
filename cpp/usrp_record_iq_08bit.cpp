@@ -200,5 +200,8 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 
   std::cout << "There were " << overrunCounter << " overruns." << std::endl;
 
+  // Free up the I/Q buffer we dynamically allocated
+  delete [] iq;
+
   return status;
 }
