@@ -3,18 +3,8 @@
  */
 #include <libbladeRF.h>
 
-#include "IqPacket.h"
-
-#include <cstring>
-#include <ctime>
-
-#include <bit>
 #include <iostream>
 #include <chrono>
-#include <algorithm>
-#include <vector>
-#include <iterator>
-#include <execution>
 
 int main(const int argc, const char *argv[])
 {
@@ -25,7 +15,6 @@ int main(const int argc, const char *argv[])
   bladerf_channel channel = BLADERF_CHANNEL_RX(0);
   struct bladerf_version version;
   bladerf_serial serNo;
-  IqPacket packet;
   const std::int8_t SAMP_MAX = 127;
   const std::int8_t SAMP_MIN = -128;
   bool saturated = false;
@@ -60,32 +49,26 @@ int main(const int argc, const char *argv[])
     return 1;
   }
 
-  packet.linkSpeed = bladerf_device_speed(dev);
-
-  if ( packet.linkSpeed == BLADERF_DEVICE_SPEED_SUPER )
+  switch (bladerf_device_speed(dev))
   {
-    std::cout << "Negotiated USB 3 link speed" << std::endl;
-  }
-  else if ( packet.linkSpeed == BLADERF_DEVICE_SPEED_HIGH )
-  {
-    std::cout << "Negotiated USB 2 link speed" << std::endl;
-  }
-  else
-  {
-    std::cout << "Negotiated unknown link speed" << std::endl;
+    case BLADERF_DEVICE_SPEED_SUPER:
+      std::cout << "Negotiated USB 3 link speed" << std::endl;
+      break;
+    case BLADERF_DEVICE_SPEED_HIGH:
+      std::cout << "Negotiated USB 2 link speed" << std::endl;
+      break;
+    default:
+      std::cout << "Negotiated unknown link speed" << std::endl;
+      break;
   }
 
   bladerf_fpga_version(dev, &version);
 
-  strncpy(packet.fpgaVersion, version.describe, sizeof(packet.fpgaVersion));
-
-  std::cout << "FPGA version: " << packet.fpgaVersion << std::endl;
+  std::cout << "FPGA version: " << version.describe << std::endl;
 
   bladerf_fw_version(dev, &version);
 
-  strncpy(packet.fwVersion, version.describe, sizeof(packet.fwVersion));
-
-  std::cout << "Firmware version: " << packet.fwVersion << std::endl;
+  std::cout << "Firmware version: " << version.describe << std::endl;
 
   bladerf_get_serial_struct(dev, &serNo);
 
@@ -231,12 +214,10 @@ int main(const int argc, const char *argv[])
 
   // Allocate the host buffer the device will be streaming to
 
-  std::vector<std::int8_t> iq_vec;
-  iq_vec.resize(bufferSize, 0);
-  std::int8_t* iq = iq_vec.data();
+  std::int8_t* iq = new std::int8_t[bufferSize];
 
   const std::chrono::system_clock::time_point startTime = std::chrono::system_clock::now();
-  std::chrono::time_point currentTime = std::chrono::system_clock::now();
+  std::chrono::system_clock::time_point currentTime;
 
   do
   {
@@ -248,7 +229,6 @@ int main(const int argc, const char *argv[])
       if (status == 0)
       {
         std::cout << "Gain = " << rxGain << " dB" << std::endl;
-        packet.rxGain = rxGain;
       }
       else
       {
@@ -259,8 +239,6 @@ int main(const int argc, const char *argv[])
     }
 
     saturated = false;
-
-    memset(iq, 0, bufferSize*sizeof(std::int8_t));
 
     memset(&meta, 0, sizeof(meta));
     meta.flags = BLADERF_META_FLAG_RX_NOW;
@@ -280,17 +258,18 @@ int main(const int argc, const char *argv[])
     }
     else
     {
+      std::cout << "Gain = " << rxGain << " dB" << std::endl;
       std::cout << "Received " << meta.actual_count << std::endl;
 
-        // Look for instances of samples saturated to min or max value
-#ifdef __linux__
-        const auto [minSamp, maxSamp] = std::minmax_element(std::execution::par_unseq, std::begin(iq_vec), std::end(iq_vec));
-#elif __APPLE__
-        const auto [minSamp, maxSamp] = std::minmax_element(std::begin(iq_vec), std::end(iq_vec));
-#else
-#error "Unsupported operating system!"
-#endif
-        saturated = (((*minSamp) <= SAMP_MIN) || ((*maxSamp) >= SAMP_MAX));
+      for (std::uint64_t ii = 0; ii < bufferSize; ii++)
+      {
+          if (iq[ii] <= (0.98 * SAMP_MIN) || (0.98 * SAMP_MAX) <= iq[ii])
+          {
+              std::cout << "Saturated sample at " << iq[ii] << std::endl;
+              saturated = true;
+              break;
+          }
+      }
     }
   }
   while(((currentTime - startTime) / std::chrono::milliseconds(1) * 1e-3) <= collectionDuration);
@@ -309,6 +288,9 @@ int main(const int argc, const char *argv[])
   }
 
   std::cout << "There were " << overrunCounter << " overruns." << std::endl;
+
+  // Free up the I/Q buffer we dynamically allocated
+  delete [] iq;
 
   return status;
 }
