@@ -15,6 +15,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
   std::string ant("RX2");
   std::string ref("internal");
   const std::int16_t SAMP_MAX = 32767;
+  const std::int16_t SAMP_MIN = -32768;
   bool saturated = false;
 
   if (argc != 7)
@@ -144,7 +145,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 
         for (std::uint64_t ii = 0; ii < bufferSize; ii++)
         {
-            if (iq[ii] <= (-0.98 * SAMP_MAX) || (0.98 * SAMP_MAX) <= iq[ii])
+            if (iq[ii] <= (0.98 * SAMP_MIN) || (0.98 * SAMP_MAX) <= iq[ii])
             {
                 std::cout << "Saturated sample at " << iq[ii] << std::endl;
                 saturated = true;
