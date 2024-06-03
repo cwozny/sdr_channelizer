@@ -12,9 +12,6 @@
 #include <iostream>
 #include <fstream>
 #include <chrono>
-#include <algorithm>
-#include <vector>
-#include <iterator>
 
 int main(const int argc, const char *argv[])
 {
@@ -261,17 +258,13 @@ int main(const int argc, const char *argv[])
 
   // Allocate the host buffer the device will be streaming to
 
-  std::vector<std::int8_t> iq_vec;
-  iq_vec.resize(bufferSize, 0);
-  std::int8_t* iq = iq_vec.data();
+  std::int8_t* iq = new std::int8_t[bufferSize];
 
   const std::chrono::system_clock::time_point startTime = std::chrono::system_clock::now();
   std::chrono::time_point currentTime = std::chrono::system_clock::now();
 
   do
   {
-    memset(iq, 0, bufferSize*sizeof(std::int8_t));
-
     memset(&meta, 0, sizeof(meta));
     meta.flags = BLADERF_META_FLAG_RX_NOW;
 
@@ -297,12 +290,15 @@ int main(const int argc, const char *argv[])
 
     packet.numSamples = meta.actual_count;
 
-    getFilenameStr(currentTime, filenameStr, FILENAME_LENGTH);
+    if (packet.numSamples == sampleLength)
+    {
+      getFilenameStr(currentTime, filenameStr, FILENAME_LENGTH);
 
-    std::ofstream fout(filenameStr);
-    fout.write((char*)&packet, sizeof(packet));
-    fout.write((char*)iq, 2*packet.numSamples*sizeof(std::int8_t));
-    fout.close();
+      std::ofstream fout(filenameStr);
+      fout.write((char*)&packet, sizeof(packet));
+      fout.write((char*)iq, 2*packet.numSamples*sizeof(std::int8_t));
+      fout.close();
+    }
   }
   while(((currentTime - startTime) / std::chrono::milliseconds(1) * 1e-3) <= collectionDuration);
 
@@ -320,6 +316,9 @@ int main(const int argc, const char *argv[])
   }
 
   std::cout << "There were " << overrunCounter << " overruns." << std::endl;
+
+  // Free up the I/Q buffer we dynamically allocated
+  delete [] iq;
 
   return status;
 }
