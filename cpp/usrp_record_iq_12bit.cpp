@@ -4,8 +4,6 @@
 #include "IqPacket.h"
 #include "Helper.h"
 
-#include <cstring>
-
 #include <iostream>
 #include <fstream>
 #include <chrono>
