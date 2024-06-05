@@ -145,9 +145,9 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
   std::int8_t* iq = new std::int8_t[bufferSize];
 
   const std::chrono::system_clock::time_point startTime = std::chrono::system_clock::now();
-  std::chrono::system_clock::time_point currentTime;
+  std::chrono::system_clock::time_point currentTime = startTime;
 
-  do
+  while(((currentTime - startTime) / std::chrono::milliseconds(1) * 1e-3) <= collectionDuration)
   {
     meta.reset();
 
@@ -196,7 +196,6 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 
     currentTime = std::chrono::system_clock::now();
   }
-  while(((currentTime - startTime) / std::chrono::milliseconds(1) * 1e-3) <= collectionDuration);
 
   std::cout << "There were " << overrunCounter << " overruns." << std::endl;
 
