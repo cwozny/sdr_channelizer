@@ -3,6 +3,8 @@
  */
 #include <libbladeRF.h>
 
+#include <cstring>
+
 #include <iostream>
 #include <chrono>
 
@@ -240,7 +242,7 @@ int main(const int argc, const char *argv[])
 
     saturated = false;
 
-    memset(&meta, 0, sizeof(meta));
+    std::memset(&meta, 0, sizeof(meta));
     meta.flags = BLADERF_META_FLAG_RX_NOW;
 
     currentTime = std::chrono::system_clock::now();
