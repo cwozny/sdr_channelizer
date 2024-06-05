@@ -260,11 +260,11 @@ int main(const int argc, const char *argv[])
   std::int8_t* iq = new std::int8_t[bufferSize];
 
   const std::chrono::system_clock::time_point startTime = std::chrono::system_clock::now();
-  std::chrono::time_point currentTime = std::chrono::system_clock::now();
+  std::chrono::time_point currentTime = startTime;
 
-  do
+  while(((currentTime - startTime) / std::chrono::milliseconds(1) * 1e-3) <= collectionDuration)
   {
-    memset(&meta, 0, sizeof(meta));
+    std::memset(&meta, 0, sizeof(meta));
     meta.flags = BLADERF_META_FLAG_RX_NOW;
 
     currentTime = std::chrono::system_clock::now();
@@ -299,7 +299,6 @@ int main(const int argc, const char *argv[])
       fout.close();
     }
   }
-  while(((currentTime - startTime) / std::chrono::milliseconds(1) * 1e-3) <= collectionDuration);
 
   // Disable the device
 
