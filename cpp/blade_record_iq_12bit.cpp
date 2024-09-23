@@ -34,7 +34,8 @@ int main(const int argc, const char *argv[])
     return 1;
   }
 
-  const std::uint64_t frequencyHz = atof(argv[1])*1e6;
+  const std::uint64_t requestedFrequencyHz = atof(argv[1])*1e6;
+  std::uint64_t receivedFrequencyHz = 0;
   const std::uint32_t requestedBandwidthHz = atof(argv[2])*1e6;
   std::uint32_t receivedBandwidthHz = 0;
   const std::uint32_t requestedSampleRate = atof(argv[3])*1e6;
@@ -111,15 +112,16 @@ int main(const int argc, const char *argv[])
 
   // Set center frequency of device
 
-  status = bladerf_set_frequency(dev, channel, frequencyHz);
+  status = bladerf_set_frequency(dev, channel, requestedFrequencyHz);
+  status = bladerf_get_frequency(dev, channel, &receivedFrequencyHz);
 
   if (status == 0)
   {
-    std::cout << "Frequency = " << frequencyHz*1e-6 << " MHz" << std::endl;
+    std::cout << "Frequency = " << receivedFrequencyHz*1e-6 << " MHz" << std::endl;
   }
   else
   {
-    std::cout << "Failed to set frequency = " << frequencyHz << ": " << bladerf_strerror(status) << std::endl;
+    std::cout << "Failed to set frequency = " << requestedFrequencyHz << ": " << bladerf_strerror(status) << std::endl;
     bladerf_close(dev);
     return 1;
   }
@@ -249,7 +251,7 @@ int main(const int argc, const char *argv[])
 
   // Set information about the recording for data analysis purposes
 
-  packet.frequencyHz = frequencyHz;
+  packet.frequencyHz = receivedFrequencyHz;
   packet.bandwidthHz = receivedBandwidthHz;
   packet.sampleRate = receivedSampleRate;
   packet.rxGain = rxGain;
