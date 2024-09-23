@@ -28,7 +28,8 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
     return 1;
   }
 
-  const std::uint64_t frequencyHz = atof(argv[1])*1e6;
+  const std::uint64_t requestedFrequencyHz = atof(argv[1])*1e6;
+  std::uint64_t receivedFrequencyHz = 0;
   const std::uint32_t requestedBandwidthHz = atof(argv[2])*1e6;
   std::uint32_t receivedBandwidthHz = 0;
   const std::uint32_t requestedSampleRate = atof(argv[3])*1e6;
@@ -61,10 +62,11 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 
   // Set center frequency of device
 
-  uhd::tune_request_t tune_request(frequencyHz);
+  uhd::tune_request_t tune_request(requestedFrequencyHz);
   usrp->set_rx_freq(tune_request);
+  receivedFrequencyHz = usrp->get_rx_freq();
 
-  std::cout << "Frequency = " << frequencyHz*1e-6 << " MHz" << std::endl;
+  std::cout << "Frequency = " << receivedFrequencyHz*1e-6 << " MHz" << std::endl;
 
   // Set sample rate of device
 
@@ -133,7 +135,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 
   // Set information about the recording for data analysis purposes
 
-  packet.frequencyHz = frequencyHz;
+  packet.frequencyHz = receivedFrequencyHz;
   packet.bandwidthHz = receivedBandwidthHz;
   packet.sampleRate = receivedSampleRate;
   packet.numSamples = requested_num_samples;
