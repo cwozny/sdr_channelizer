@@ -66,7 +66,7 @@ for ii = 1:length(mag)
 
     if (idx+numSamplesForPw) < length(mag)
         mag(idx:idx+numSamplesForPw-1,1) = 1;
-        phi(idx:idx+numSamplesForPw-1,1) = my_phi/pi;
+        phi(idx:idx+numSamplesForPw-1,1) = my_phi;
     end
 
     idx = idx + numSamplesForPri;
@@ -80,7 +80,7 @@ end
 
 fprintf('%s - Plotting data\n', datetime)
 
-iq = mag .* (cosd(phi) + 1j*sind(phi));
+iq = mag .* (cos(phi) + 1j*sin(phi));
 
 t = 0:1/Fs:(T-(1/Fs));
 
