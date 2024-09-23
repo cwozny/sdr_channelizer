@@ -11,9 +11,10 @@ close all
 
 Fs = 56e6;
 f = -(Fs/2) + Fs*rand;
-T = 1e-3;
-PW = 13e-6;
-PRI = 100e-6;
+T = 200e-3;
+PW = 100e-6;
+PRI = 1000e-6;
+BARKER_13 = false;
 
 fprintf('%s - Sample rate = %1.1f Msps, Center Freq = %1.1f MHz, Pulse Width = %1.1f us, PRI = %1.1f us\n', datetime, Fs*1e-6, f*1e-6, PW*1e6, PRI*1e6)
 
@@ -30,25 +31,37 @@ numSamplesForPri = Fs*PRI;
 idx = 1;
 
 for ii = 1:length(mag)
-    
-    numSamplesPerChip = numSamplesForPw/13;
-    
-    barker_phi = 90*ones(5*numSamplesPerChip,1);
-    barker_phi = [barker_phi; -90*ones(2*numSamplesPerChip,1)];
-    barker_phi = [barker_phi; 90*ones(2*numSamplesPerChip,1)];
-    barker_phi = [barker_phi; -90*ones(1*numSamplesPerChip,1)];
-    barker_phi = [barker_phi; 90*ones(1*numSamplesPerChip,1)];
-    barker_phi = [barker_phi; -90*ones(1*numSamplesPerChip,1)];
-    barker_phi = [barker_phi; 90*ones(1*numSamplesPerChip,1)];
+
+    if BARKER_13
+        numSamplesPerChip = round(numSamplesForPw/13);
+
+        if numSamplesForPw ~= numSamplesPerChip*13
+            numSamplesForPw = numSamplesPerChip*13;
+            PW = numSamplesForPw/Fs;
+            fprintf('%s - Pulse width adjusted to %f us\n', datetime, PW*1e6)
+        end
+    end
 
     freq_phi = zeros(numSamplesForPw,1);
 
     for jj = 1:numSamplesForPw-1
         freq_phi(jj+1) = freq_phi(jj) + 2*pi*f/Fs;
     end
-    
-    my_phi = freq_phi+barker_phi;
-    
+
+    my_phi = freq_phi;
+
+    if BARKER_13
+        barker_phi = 90*ones(5*numSamplesPerChip,1);
+        barker_phi = [barker_phi; -90*ones(2*numSamplesPerChip,1)];
+        barker_phi = [barker_phi; 90*ones(2*numSamplesPerChip,1)];
+        barker_phi = [barker_phi; -90*ones(1*numSamplesPerChip,1)];
+        barker_phi = [barker_phi; 90*ones(1*numSamplesPerChip,1)];
+        barker_phi = [barker_phi; -90*ones(1*numSamplesPerChip,1)];
+        barker_phi = [barker_phi; 90*ones(1*numSamplesPerChip,1)];
+
+        my_phi = my_phi + barker_phi;
+    end
+
     my_phi = angle(exp(1j*my_phi));
 
     if (idx+numSamplesForPw) < length(mag)
@@ -64,10 +77,6 @@ for ii = 1:length(mag)
 end
 
 %% Plot data
-
-figure
-plot(my_phi,'.')
-grid on
 
 fprintf('%s - Plotting data\n', datetime)
 
