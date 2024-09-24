@@ -12,10 +12,10 @@ close all
 Fs = 56e6;
 f_start = -(Fs/2) + Fs*rand;
 T = 10e-3;
-PW = 200e-6;
+PW = 100e-6;
 PRI = 1000e-6;
-BARKER_13 = true;
-LFM_EXTENT = 1e6;
+BARKER_13 = false;
+LFM_EXTENT = 0e6;
 f_stop = f_start + LFM_EXTENT;
 
 fprintf('%s - Sample rate = %1.1f Msps, Center Freq = %1.1f MHz, Pulse Width = %1.1f us, PRI = %1.1f us\n', datetime, Fs*1e-6, f_start*1e-6, PW*1e6, PRI*1e6)
@@ -89,11 +89,15 @@ subplot(2,1,1)
 plot(t, abs(iq), '.')
 hAx=gca;
 grid on
+ylabel('Magnitude')
+
 subplot(2,1,2)
 plot(t, rad2deg(angle(iq)), '.')
 hAx(2)=gca;
 grid on
 xlabel('Time (sec)')
+ylabel('Phase (degs)')
+ylim([-180 180])
 
 linkaxes(hAx,'x')
 
