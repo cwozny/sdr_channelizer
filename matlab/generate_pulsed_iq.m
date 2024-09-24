@@ -10,13 +10,15 @@ close all
 %% Constants
 
 Fs = 56e6;
-f = -(Fs/2) + Fs*rand;
-T = 200e-3;
-PW = 100e-6;
+f_start = -(Fs/2) + Fs*rand;
+T = 10e-3;
+PW = 200e-6;
 PRI = 1000e-6;
-BARKER_13 = false;
+BARKER_13 = true;
+LFM_EXTENT = 1e6;
+f_stop = f_start + LFM_EXTENT;
 
-fprintf('%s - Sample rate = %1.1f Msps, Center Freq = %1.1f MHz, Pulse Width = %1.1f us, PRI = %1.1f us\n', datetime, Fs*1e-6, f*1e-6, PW*1e6, PRI*1e6)
+fprintf('%s - Sample rate = %1.1f Msps, Center Freq = %1.1f MHz, Pulse Width = %1.1f us, PRI = %1.1f us\n', datetime, Fs*1e-6, f_start*1e-6, PW*1e6, PRI*1e6)
 
 %% Generate pulse train
 
@@ -42,11 +44,9 @@ for ii = 1:length(mag)
         end
     end
 
-    freq_phi = zeros(numSamplesForPw,1);
+    f_lfm = linspace(f_start,f_stop,numSamplesForPw)';
 
-    for jj = 1:numSamplesForPw-1
-        freq_phi(jj+1) = freq_phi(jj) + 2*pi*f/Fs;
-    end
+    freq_phi = cumsum(2*pi*f_lfm/Fs);
 
     my_phi = freq_phi;
 
@@ -96,6 +96,9 @@ grid on
 xlabel('Time (sec)')
 
 linkaxes(hAx,'x')
+
+figure
+spectrogram(iq,1024,0,1024,Fs,'centered','yaxis')
 
 %% Done
 
