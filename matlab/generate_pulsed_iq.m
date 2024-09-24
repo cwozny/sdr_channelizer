@@ -30,39 +30,39 @@ phi = zeros(Fs*T,1);
 numSamplesForPw = Fs*PW;
 numSamplesForPri = Fs*PRI;
 
+if BARKER_13
+    numSamplesPerChip = round(numSamplesForPw/13);
+
+    if numSamplesForPw ~= numSamplesPerChip*13
+        numSamplesForPw = numSamplesPerChip*13;
+        PW = numSamplesForPw/Fs;
+        fprintf('%s - Pulse width adjusted to %f us\n', datetime, PW*1e6)
+    end
+end
+
+f_lfm = linspace(f_start,f_stop,numSamplesForPw)';
+
+freq_phi = cumsum(2*pi*f_lfm/Fs);
+
+my_phi = freq_phi;
+
+if BARKER_13
+    barker_phi = 90*ones(5*numSamplesPerChip,1);
+    barker_phi = [barker_phi; -90*ones(2*numSamplesPerChip,1)];
+    barker_phi = [barker_phi; 90*ones(2*numSamplesPerChip,1)];
+    barker_phi = [barker_phi; -90*ones(1*numSamplesPerChip,1)];
+    barker_phi = [barker_phi; 90*ones(1*numSamplesPerChip,1)];
+    barker_phi = [barker_phi; -90*ones(1*numSamplesPerChip,1)];
+    barker_phi = [barker_phi; 90*ones(1*numSamplesPerChip,1)];
+
+    my_phi = my_phi + barker_phi;
+end
+
+my_phi = angle(exp(1j*my_phi));
+
 idx = 1;
 
 for ii = 1:length(mag)
-
-    if BARKER_13
-        numSamplesPerChip = round(numSamplesForPw/13);
-
-        if numSamplesForPw ~= numSamplesPerChip*13
-            numSamplesForPw = numSamplesPerChip*13;
-            PW = numSamplesForPw/Fs;
-            fprintf('%s - Pulse width adjusted to %f us\n', datetime, PW*1e6)
-        end
-    end
-
-    f_lfm = linspace(f_start,f_stop,numSamplesForPw)';
-
-    freq_phi = cumsum(2*pi*f_lfm/Fs);
-
-    my_phi = freq_phi;
-
-    if BARKER_13
-        barker_phi = 90*ones(5*numSamplesPerChip,1);
-        barker_phi = [barker_phi; -90*ones(2*numSamplesPerChip,1)];
-        barker_phi = [barker_phi; 90*ones(2*numSamplesPerChip,1)];
-        barker_phi = [barker_phi; -90*ones(1*numSamplesPerChip,1)];
-        barker_phi = [barker_phi; 90*ones(1*numSamplesPerChip,1)];
-        barker_phi = [barker_phi; -90*ones(1*numSamplesPerChip,1)];
-        barker_phi = [barker_phi; 90*ones(1*numSamplesPerChip,1)];
-
-        my_phi = my_phi + barker_phi;
-    end
-
-    my_phi = angle(exp(1j*my_phi));
 
     if (idx+numSamplesForPw) < length(mag)
         mag(idx:idx+numSamplesForPw-1,1) = 1;
