@@ -92,17 +92,25 @@ linkaxes(hAx,'x')
 
 %% Cast data to 16-bit I & Q
 
-maxVal = 2^(16-1);
+binWidth = 0.1e6;
+numBands = round(fs/binWidth); % channelizer bins
 
-iq_real_16 = int16(real(iq) * maxVal);
-iq_imag_16 = int16(imag(iq) * maxVal);
+channelizer = dsp.Channelizer(numBands);
 
-% cast_iq_16 = (double(iq_real_16) / maxVal) + 1j * (double(iq_imag_16) / maxVal);
-% 
-% subplot(2,1,1)
-% plot(t, abs(cast_iq_16), 'o')
-% subplot(2,1,2)
-% plot(t, rad2deg(angle(cast_iq_16)), 'o')
+chan_iq = channelizer(iq);
+chan_iq = fftshift(chan_iq,2);
+
+f = centerFrequencies(channelizer,fs)*1e-6;
+t = (0:size(chan_iq,1)-1)*numBands/fs;
+
+hFig=figure;
+
+hSurf = surf(f,t,abs(chan_iq));
+hSurf.EdgeColor = 'none';
+
+xlabel('Frequency (MHz)')
+ylabel('Time (sec)')
+zlabel('Magnitude')
 
 binfile = fopen(sprintf("%1.1f_MHz_%1.1f_us_%1.1f_us.iq",f*1e-6,PW*1e6,PRI*1e6),"w","ieee-le");
 
