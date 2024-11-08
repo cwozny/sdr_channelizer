@@ -7,6 +7,7 @@
 #include <iostream>
 #include <fstream>
 #include <chrono>
+#include <complex>
 
 int UHD_SAFE_MAIN(int argc, char *argv[])
 {
@@ -20,10 +21,10 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
   char filenameStr[FILENAME_LENGTH];
   std::uint32_t overrunCounter = 0;
 
-  if (argc != 7)
+  if (argc != 8)
   {
     std::cout << std::endl << "\tUsage:" << std::endl;
-    std::cout << "\t\t" << argv[0] << " <freqMhz> <bwMhz> <sampleRateMsps> <gainDb> <dwellSec> <durationSec>" << std::endl;
+    std::cout << "\t\t" << argv[0] << " <freqMhz> <bwMhz> <sampleRateMsps> <gainDb> <dwellSec> <durationSec> <filter delay>" << std::endl;
     std::cout << std::endl;
     return 1;
   }
@@ -37,28 +38,42 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
   std::int32_t rxGain = atoi(argv[4]);
   const float dwellDuration = atof(argv[5]);
   const float collectionDuration = atof(argv[6]);
+  const std::int32_t FILTER_DELAY = atoi(argv[7]); // Number of initial zero'd samples induced by filter delay
 
   //create a usrp device
 
   uhd::usrp::multi_usrp::sptr usrp = uhd::usrp::multi_usrp::make(device_args);
+
+  // Save off information about the device being used
+
+  const std::string boardName = usrp->get_mboard_name();
+  strncpy(packet.userDefined[0], boardName.c_str(), sizeof(packet.userDefined[0]));
+  std::cout << "Board Name: " << packet.userDefined[0] << std::endl;
+
+  uhd::dict<std::string, std::string> rx_info = usrp->get_usrp_rx_info();
+
+  const std::string serialNumber = rx_info.get("mboard_serial");
+  strncpy(packet.userDefined[1], serialNumber.c_str(), sizeof(packet.userDefined[1]));
+  std::cout << "Serial Number: " << packet.userDefined[1] << std::endl;
+
+  uhd::device::sptr dev = usrp->get_device();
+  uhd::property_tree::sptr tree = dev->get_tree();
+  const uhd::fs_path& path = "/mboards/0/";
+
+  const std::string fpgaVersion = tree->access<std::string>(path / "fpga_version").get();
+  strncpy(packet.userDefined[2], fpgaVersion.c_str(), sizeof(packet.userDefined[2]));
+  std::cout << "FPGA Version: " << packet.userDefined[2] << std::endl;
+
+  const std::string fwVersion = tree->access<std::string>(path / "fw_version").get();
+  strncpy(packet.userDefined[3], fwVersion.c_str(), sizeof(packet.userDefined[3]));
+  std::cout << "FW Version: " << packet.userDefined[3] << std::endl;
+
 
   // Lock mboard clocks
   usrp->set_clock_source(ref);
 
   //always select the subdevice first, the channel mapping affects the other settings
   usrp->set_rx_subdev_spec(subdev);
-
-  // Save off information about the device being used
-
-  strncpy(packet.userDefined[0], usrp->get_mboard_name().c_str(), sizeof(packet.userDefined[0]));
-
-  std::cout << "Board name: " << packet.userDefined[0] << std::endl;
-
-  uhd::dict<std::string, std::string> rx_info = usrp->get_usrp_rx_info();
-
-  strncpy(packet.userDefined[1], rx_info.get("mboard_serial").c_str(), sizeof(packet.userDefined[1]));
-
-  std::cout << "Serial number: " << packet.userDefined[1] << std::endl;
 
   // Set center frequency of device
 
@@ -108,15 +123,14 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
 
   // Compute the requested number of samples and buffer size
 
-  const std::uint64_t requested_num_samples = dwellDuration*receivedSampleRate;
-  const std::uint64_t bufferSize = 2*requested_num_samples;
+  const std::uint64_t requested_num_samples = dwellDuration*receivedSampleRate + FILTER_DELAY;
 
   // setup streaming
   uhd::stream_cmd_t stream_cmd(uhd::stream_cmd_t::STREAM_MODE_NUM_SAMPS_AND_DONE);
 
-  stream_cmd.num_samps = requested_num_samples;
+  stream_cmd.num_samps  = requested_num_samples;
   stream_cmd.stream_now = true;
-  stream_cmd.time_spec  = usrp->get_time_now();
+  stream_cmd.time_spec  = uhd::time_spec_t(0.0);
 
   // Specify the endianness of the recording
 
@@ -138,13 +152,12 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
   packet.frequencyHz = receivedFrequencyHz;
   packet.bandwidthHz = receivedBandwidthHz;
   packet.sampleRate = receivedSampleRate;
-  packet.numSamples = requested_num_samples;
   packet.rxGain = rxGain;
   packet.bitWidth = 16; // signed 16-bit integer
 
   // Allocate the host buffer the device will be streaming to
 
-  std::int16_t* iq = new std::int16_t[bufferSize];
+  std::complex<std::int16_t>* iq = new std::complex<std::int16_t>[requested_num_samples];
 
   const std::chrono::system_clock::time_point startTime = std::chrono::system_clock::now();
   std::chrono::system_clock::time_point currentTime = startTime;
@@ -153,16 +166,11 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
   {
     meta.reset();
 
-    stream_cmd.stream_mode = uhd::stream_cmd_t::STREAM_MODE_NUM_SAMPS_AND_DONE;
-
     rx_stream->issue_stream_cmd(stream_cmd);
 
-    packet.numSamples = rx_stream->recv(&iq[0], requested_num_samples, meta, 0.5, false);
-    packet.sampleStartTime = meta.time_spec.get_real_secs();
-
-    stream_cmd.stream_mode = uhd::stream_cmd_t::STREAM_MODE_STOP_CONTINUOUS;
-
-    rx_stream->issue_stream_cmd(stream_cmd);
+    packet.numSamples = rx_stream->recv(iq, requested_num_samples, meta, 100e-3);
+    packet.numSamples -= FILTER_DELAY;
+    packet.sampleStartTime = meta.time_spec.get_real_secs() + FILTER_DELAY*1.0/packet.sampleRate;
 
     std::cout << "Received " << packet.numSamples << std::endl;
 
@@ -186,13 +194,13 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
         break;
     }
 
-    if (packet.numSamples == requested_num_samples)
+    if (packet.numSamples == (requested_num_samples - FILTER_DELAY))
     {
       getFilenameStr(currentTime, filenameStr, FILENAME_LENGTH);
 
-      std::ofstream fout(filenameStr);
-      fout.write((char*)&packet, sizeof(packet));
-      fout.write((char*)iq, 2*packet.numSamples*sizeof(std::int16_t));
+      std::ofstream fout(filenameStr, std::ofstream::binary);
+      fout.write((const char*)&packet, sizeof(packet));
+      fout.write((const char*)&iq[FILTER_DELAY], (requested_num_samples-FILTER_DELAY)*sizeof(std::complex<std::int16_t>));
       fout.close();
     }
 

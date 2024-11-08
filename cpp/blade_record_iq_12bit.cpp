@@ -12,6 +12,7 @@
 #include <iostream>
 #include <fstream>
 #include <chrono>
+#include <complex>
 
 int main(const int argc, const char *argv[])
 {
@@ -26,10 +27,10 @@ int main(const int argc, const char *argv[])
   char filenameStr[FILENAME_LENGTH];
   std::uint32_t overrunCounter = 0;
 
-  if (argc != 7)
+  if (argc != 8)
   {
     std::cout << std::endl << "\tUsage:" << std::endl;
-    std::cout << "\t\t./blade_record_iq_12bit.out <freqMhz> <bwMhz> <sampleRateMsps> <gainDb> <dwellSec> <durationSec>" << std::endl;
+    std::cout << "\t\t" << argv[0] << " <freqMhz> <bwMhz> <sampleRateMsps> <gainDb> <dwellSec> <durationSec> <filter delay>" << std::endl;
     std::cout << std::endl;
     return 1;
   }
@@ -43,6 +44,7 @@ int main(const int argc, const char *argv[])
   std::int32_t rxGain = atoi(argv[4]);
   const float dwellDuration = atof(argv[5]);
   const float collectionDuration = atof(argv[6]);
+  const std::int32_t FILTER_DELAY = atoi(argv[7]); // Number of initial zero'd samples induced by filter delay
 
   /* Initialize the information used to identify the desired device
    * to all wildcard (i.e., "any device") values */
@@ -75,25 +77,25 @@ int main(const int argc, const char *argv[])
 
   bladerf_get_serial_struct(dev, &serNo);
 
-  strncpy(packet.userDefined[0], bladerf_get_board_name(dev), sizeof(packet.userDefined[0]));
+  const std::string boardName = bladerf_get_board_name(dev);
+  strncpy(packet.userDefined[0], boardName.c_str(), sizeof(packet.userDefined[0]));
+  std::cout << "Board Name: " << packet.userDefined[0] << std::endl;
 
-  std::cout << "Board name: " << packet.userDefined[0] << std::endl;
-
-  strncpy(packet.userDefined[1], serNo.serial, sizeof(packet.userDefined[1]));
-
-  std::cout << "Serial number: " << packet.userDefined[1] << std::endl;
+  const std::string serialNumber = serNo.serial;
+  strncpy(packet.userDefined[1], serialNumber.c_str(), sizeof(packet.userDefined[1]));
+  std::cout << "Serial Number: " << packet.userDefined[1] << std::endl;
 
   bladerf_fpga_version(dev, &version);
 
-  strncpy(packet.userDefined[2], version.describe, sizeof(packet.userDefined[2]));
-
-  std::cout << "FPGA version: " << packet.userDefined[2] << std::endl;
+  const std::string fpgaVersion = version.describe;
+  strncpy(packet.userDefined[2], fpgaVersion.c_str(), sizeof(packet.userDefined[2]));
+  std::cout << "FPGA Version: " << packet.userDefined[2] << std::endl;
 
   bladerf_fw_version(dev, &version);
 
-  strncpy(packet.userDefined[3], version.describe, sizeof(packet.userDefined[3]));
-
-  std::cout << "Firmware version: " << packet.userDefined[3] << std::endl;
+  const std::string fwVersion = version.describe;
+  strncpy(packet.userDefined[3], fwVersion.c_str(), sizeof(packet.userDefined[3]));
+  std::cout << "FW Version: " << packet.userDefined[3] << std::endl;
 
   // Set relevant features of device
 
@@ -188,8 +190,7 @@ int main(const int argc, const char *argv[])
 
   // Compute the requested number of samples and buffer size
 
-  const std::uint64_t requested_num_samples = dwellDuration*receivedSampleRate;
-  const std::uint64_t bufferSize = 2*requested_num_samples;
+  const std::uint64_t requested_num_samples = dwellDuration*receivedSampleRate + FILTER_DELAY;
 
   // Set up the configuration parameters necessary to receive samples with the device
 
@@ -209,7 +210,7 @@ int main(const int argc, const char *argv[])
 
   // Configure both the device's x1 RX and TX channels for use with the synchronous interface.
 
-  status = bladerf_sync_config(dev, BLADERF_RX_X1, BLADERF_FORMAT_SC8_Q7_META, num_buffers, buffer_size, num_transfers, timeout_ms);
+  status = bladerf_sync_config(dev, BLADERF_RX_X1, BLADERF_FORMAT_SC16_Q11_META, num_buffers, buffer_size, num_transfers, timeout_ms);
 
   if (status == 0)
   {
@@ -259,10 +260,10 @@ int main(const int argc, const char *argv[])
 
   // Allocate the host buffer the device will be streaming to
 
-  std::int16_t* iq = new std::int16_t[bufferSize];
+  std::complex<std::int16_t>* iq = new std::complex<std::int16_t>[requested_num_samples];
 
   const std::chrono::system_clock::time_point startTime = std::chrono::system_clock::now();
-  std::chrono::time_point currentTime = startTime;
+  std::chrono::system_clock::time_point currentTime = startTime;
 
   while(((currentTime - startTime) / std::chrono::milliseconds(1) * 1e-3) <= collectionDuration)
   {
@@ -271,7 +272,7 @@ int main(const int argc, const char *argv[])
 
     currentTime = std::chrono::system_clock::now();
 
-    packet.sampleStartTime = (currentTime.time_since_epoch() / std::chrono::nanoseconds(1)) * 1e-9;
+    packet.sampleStartTime = (currentTime.time_since_epoch() / std::chrono::nanoseconds(1)) * 1e-9 + FILTER_DELAY*1.0/packet.sampleRate;
 
     status = bladerf_sync_rx(dev, iq, requested_num_samples, &meta, 5000);
 
@@ -289,15 +290,15 @@ int main(const int argc, const char *argv[])
       std::cout << "Received " << meta.actual_count << std::endl;
     }
 
-    packet.numSamples = meta.actual_count;
+    packet.numSamples = meta.actual_count - FILTER_DELAY;
 
-    if (packet.numSamples == requested_num_samples)
+    if (packet.numSamples == (requested_num_samples - FILTER_DELAY))
     {
       getFilenameStr(currentTime, filenameStr, FILENAME_LENGTH);
 
-      std::ofstream fout(filenameStr);
-      fout.write((char*)&packet, sizeof(packet));
-      fout.write((char*)iq, 2*packet.numSamples*sizeof(std::int16_t));
+      std::ofstream fout(filenameStr, std::ofstream::binary);
+      fout.write((const char*)&packet, sizeof(packet));
+      fout.write((const char*)&iq[FILTER_DELAY], (requested_num_samples-FILTER_DELAY)*sizeof(std::complex<std::int16_t>));
       fout.close();
     }
   }
