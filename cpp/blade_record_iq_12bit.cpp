@@ -23,6 +23,7 @@ int main(const int argc, const char *argv[])
   bladerf_channel channel = BLADERF_CHANNEL_RX(0);
   struct bladerf_version version;
   bladerf_serial serNo;
+  bladerf_timestamp startTimeTicks = 0;
   IqPacket packet;
   char filenameStr[FILENAME_LENGTH];
   std::uint32_t overrunCounter = 0;
@@ -32,7 +33,7 @@ int main(const int argc, const char *argv[])
     std::cout << std::endl << "\tUsage:" << std::endl;
     std::cout << "\t\t" << argv[0] << " <freqMhz> <bwMhz> <sampleRateMsps> <gainDb> <dwellSec> <durationSec> <filter delay>" << std::endl;
     std::cout << std::endl;
-    return 1;
+    return __LINE__;
   }
 
   const std::uint64_t requestedFrequencyHz = atof(argv[1])*1e6;
@@ -55,7 +56,7 @@ int main(const int argc, const char *argv[])
   if (status != 0)
   {
     std::cout << "Unable to open device: " << bladerf_strerror(status) << std::endl;
-    return 1;
+    return __LINE__;
   }
 
   packet.linkSpeed = bladerf_device_speed(dev);
@@ -78,24 +79,24 @@ int main(const int argc, const char *argv[])
   bladerf_get_serial_struct(dev, &serNo);
 
   const std::string boardName = bladerf_get_board_name(dev);
-  strncpy(packet.userDefined[0], boardName.c_str(), sizeof(packet.userDefined[0]));
-  std::cout << "Board Name: " << packet.userDefined[0] << std::endl;
+  strncpy(packet.boardName, boardName.c_str(), sizeof(packet.boardName) - 1);
+  std::cout << "Board Name: " << packet.boardName << std::endl;
 
   const std::string serialNumber = serNo.serial;
-  strncpy(packet.userDefined[1], serialNumber.c_str(), sizeof(packet.userDefined[1]));
-  std::cout << "Serial Number: " << packet.userDefined[1] << std::endl;
+  strncpy(packet.serialNumber, serialNumber.c_str(), sizeof(packet.serialNumber) - 1);
+  std::cout << "Serial Number: " << packet.serialNumber << std::endl;
 
   bladerf_fpga_version(dev, &version);
 
   const std::string fpgaVersion = version.describe;
-  strncpy(packet.userDefined[2], fpgaVersion.c_str(), sizeof(packet.userDefined[2]));
-  std::cout << "FPGA Version: " << packet.userDefined[2] << std::endl;
+  strncpy(packet.fpgaVersion, fpgaVersion.c_str(), sizeof(packet.fpgaVersion) - 1);
+  std::cout << "FPGA Version: " << packet.fpgaVersion << std::endl;
 
   bladerf_fw_version(dev, &version);
 
   const std::string fwVersion = version.describe;
-  strncpy(packet.userDefined[3], fwVersion.c_str(), sizeof(packet.userDefined[3]));
-  std::cout << "FW Version: " << packet.userDefined[3] << std::endl;
+  strncpy(packet.fwVersion, fwVersion.c_str(), sizeof(packet.fwVersion) - 1);
+  std::cout << "FW Version: " << packet.fwVersion << std::endl;
 
   // Set relevant features of device
 
@@ -109,7 +110,7 @@ int main(const int argc, const char *argv[])
   {
     std::cout << "Failed to set feature = DEFAULT: " << bladerf_strerror(status) << std::endl;
     bladerf_close(dev);
-    return 1;
+    return __LINE__;
   }
 
   // Set center frequency of device
@@ -125,7 +126,7 @@ int main(const int argc, const char *argv[])
   {
     std::cout << "Failed to set frequency = " << requestedFrequencyHz << ": " << bladerf_strerror(status) << std::endl;
     bladerf_close(dev);
-    return 1;
+    return __LINE__;
   }
 
   // Set sample rate of device
@@ -134,13 +135,13 @@ int main(const int argc, const char *argv[])
 
   if (status == 0)
   {
-    std::cout <<  "Sample Rate = " << receivedSampleRate*1e-6 << " Msps" << std::endl;
+    std::cout << "Sample Rate = " << receivedSampleRate*1e-6 << " Msps" << std::endl;
   }
   else
   {
-    std::cout <<  "Failed to set sample rate = " << requestedSampleRate << ": " << bladerf_strerror(status) << std::endl;
+    std::cout << "Failed to set sample rate = " << requestedSampleRate << ": " << bladerf_strerror(status) << std::endl;
     bladerf_close(dev);
-    return 1;
+    return __LINE__;
   }
 
   // Set analog bandwidth of device
@@ -155,7 +156,7 @@ int main(const int argc, const char *argv[])
   {
     std::cout << "Failed to set bandwidth = " << requestedBandwidthHz << ": " << bladerf_strerror(status) << std::endl;
     bladerf_close(dev);
-    return 1;
+    return __LINE__;
   }
 
   // Disable automatic gain control
@@ -170,7 +171,7 @@ int main(const int argc, const char *argv[])
   {
     std::cout << "Failed to disable automatic gain control: " << bladerf_strerror(status) << std::endl;
     bladerf_close(dev);
-    return 1;
+    return __LINE__;
   }
 
   // Set gain of the device
@@ -185,7 +186,7 @@ int main(const int argc, const char *argv[])
   {
     std::cout << "Failed to set gain: " << bladerf_strerror(status) << std::endl;
     bladerf_close(dev);
-    return 1;
+    return __LINE__;
   }
 
   // Compute the requested number of samples and buffer size
@@ -220,7 +221,7 @@ int main(const int argc, const char *argv[])
   {
     std::cout << "Failed to configure RX sync interface: " << bladerf_strerror(status) << std::endl;
     bladerf_close(dev);
-    return 1;
+    return __LINE__;
   }
 
   status = bladerf_enable_module(dev, BLADERF_RX, true);
@@ -233,6 +234,7 @@ int main(const int argc, const char *argv[])
   {
     std::cout << "Failed to enable RX: " << bladerf_strerror(status) << std::endl;
     bladerf_close(dev);
+    return __LINE__;
   }
 
   // Specify the endianness of the recording
@@ -243,7 +245,7 @@ int main(const int argc, const char *argv[])
   }
   else if constexpr (std::endian::native == std::endian::little)
   {
-    packet.endianness = 0x01010101;
+    packet.endianness = 0x02020202;
   }
   else
   {
@@ -258,12 +260,29 @@ int main(const int argc, const char *argv[])
   packet.rxGain = rxGain;
   packet.bitWidth = 12; // signed 12-bit integer
 
+  // Precompute the filter delay in seconds
+  const std::double_t filterDelaySecs = FILTER_DELAY*1.0/packet.sampleRate;
+
   // Allocate the host buffer the device will be streaming to
 
   std::complex<std::int16_t>* iq = new std::complex<std::int16_t>[requested_num_samples];
 
   const std::chrono::system_clock::time_point startTime = std::chrono::system_clock::now();
+  const std::double_t startTimeSecs = startTime.time_since_epoch() / std::chrono::nanoseconds(1) * 1e-9;
   std::chrono::system_clock::time_point currentTime = startTime;
+
+  status = bladerf_get_timestamp(dev, BLADERF_RX, &startTimeTicks);
+
+  if (status == 0)
+  {
+    std::cout << "Retrieved device timestamp (in clock ticks): " << startTimeTicks << std::endl;
+  }
+  else
+  {
+    std::cout << "Failed to get timestamp: " << bladerf_strerror(status) << std::endl;
+    bladerf_close(dev);
+    return __LINE__;
+  }
 
   while(((currentTime - startTime) / std::chrono::milliseconds(1) * 1e-3) <= collectionDuration)
   {
@@ -272,7 +291,9 @@ int main(const int argc, const char *argv[])
 
     currentTime = std::chrono::system_clock::now();
 
-    packet.sampleStartTime = (currentTime.time_since_epoch() / std::chrono::nanoseconds(1)) * 1e-9 + FILTER_DELAY*1.0/packet.sampleRate;
+    const std::double_t relativeSampleTimeSecs = (meta.timestamp - startTimeTicks) * 1.0 / packet.sampleRate;
+
+    packet.sampleStartTime = startTimeSecs + relativeSampleTimeSecs + filterDelaySecs;
 
     status = bladerf_sync_rx(dev, iq, requested_num_samples, &meta, 5000);
 

@@ -25,23 +25,45 @@ for ii = 1:length(listing)
 
         endianness = fread(fid,1,'uint32=>uint32');
 
-        if endianness == 0x00000000
-            fprintf('%s - Reading in big endian file\n', datetime)
-        elseif endianness == 0x01010101
-            fprintf('%s - Reading in little endian file\n', datetime)
-        else
-            warning('%s - Reading in file with unknown endianness\n', datetime)
+        switch endianness
+            case 0x00000000
+                fprintf('%s - Reading in big endian file\n', datetime)
+                fileFormat = 2; % assume latest file format (this is a gap since you can't specify a file format & big endian)
+            case 0x01010101
+                fprintf('%s - Reading in little endian file\n', datetime)
+                fileFormat = 1;
+            case 0x02020202
+                fprintf('%s - Reading in little endian file\n', datetime)
+                fileFormat = 2;
+            otherwise
+                error('%s - Unsupported endianness (0x%X)\n', datetime, endianness)
         end
 
+        fprintf('%s - File format is %d\n', datetime, fileFormat)
+
         linkSpeed = fread(fid,1,'uint32=>uint32');
-        fc = fread(fid,1,'uint32=>float64');
+
+        if fileFormat == 1
+            warning('File format 1 doesn''t interpret frequencies above 2^32 Hz correctly');
+            fc = fread(fid,1,'uint32=>float64');
+        elseif fileFormat == 2
+            fc = fread(fid,1,'uint64=>float64');
+        end
+
         bw = fread(fid,1,'uint32=>float64');
         fs = fread(fid,1,'uint32=>float64');
         gain = fread(fid,1,'uint32=>float64');
         numSamples = fread(fid,1,'uint32=>float64');
         bitWidth = fread(fid,1,'uint32=>uint32');
-        fpgaVersion = string(fread(fid,32,'*char')');
-        fwVersion = string(fread(fid,32,'*char')');
+
+        if fileFormat == 2
+            spare0 = fread(fid,1,'uint32=>float64');
+        end
+
+        boardName = strip(string(fread(fid,16,'*char')'),char(0));
+        serialNo = strip(string(fread(fid,16,'*char')'),char(0));
+        fpgaVersion = strip(string(fread(fid,16,'*char')'),char(0));
+        fwVersion = strip(string(fread(fid,16,'*char')'),char(0));
         sampleStartTime = fread(fid,1,'float64=>float64');
 
         if 0 < bitWidth && bitWidth <= 8
@@ -80,12 +102,18 @@ for ii = 1:length(listing)
 
         hFig=figure;
 
-        [s,f,t] = stft(iq,fs);
+        [s,f,t] = stft(iq,fs,'Window',hamming(768),'OverlapLength',0);
         mesh(t*1e3,(f+fc)*1e-6,abs(s).^2)
         view(2)
 
+        fmin = (fc-fs/2)*1e-6;
+        fmax = (fc+fs/2)*1e-6;
+
         xlabel("Time (ms)")
         ylabel("Frequency (MHz)")
+        ylim([fmin fmax])
+        colorbar
+        %clim([0 1])
 
         title(filename,'Interpreter','none')
 

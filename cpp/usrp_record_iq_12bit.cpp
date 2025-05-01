@@ -26,7 +26,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
     std::cout << std::endl << "\tUsage:" << std::endl;
     std::cout << "\t\t" << argv[0] << " <freqMhz> <bwMhz> <sampleRateMsps> <gainDb> <dwellSec> <durationSec> <filter delay>" << std::endl;
     std::cout << std::endl;
-    return 1;
+    return __LINE__;
   }
 
   const std::uint64_t requestedFrequencyHz = atof(argv[1])*1e6;
@@ -47,27 +47,26 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
   // Save off information about the device being used
 
   const std::string boardName = usrp->get_mboard_name();
-  strncpy(packet.userDefined[0], boardName.c_str(), sizeof(packet.userDefined[0]));
-  std::cout << "Board Name: " << packet.userDefined[0] << std::endl;
+  strncpy(packet.boardName, boardName.c_str(), sizeof(packet.boardName) - 1);
+  std::cout << "Board Name: " << packet.boardName << std::endl;
 
   uhd::dict<std::string, std::string> rx_info = usrp->get_usrp_rx_info();
 
   const std::string serialNumber = rx_info.get("mboard_serial");
-  strncpy(packet.userDefined[1], serialNumber.c_str(), sizeof(packet.userDefined[1]));
-  std::cout << "Serial Number: " << packet.userDefined[1] << std::endl;
+  strncpy(packet.serialNumber, serialNumber.c_str(), sizeof(packet.serialNumber) - 1);
+  std::cout << "Serial Number: " << packet.serialNumber << std::endl;
 
   uhd::device::sptr dev = usrp->get_device();
   uhd::property_tree::sptr tree = dev->get_tree();
   const uhd::fs_path& path = "/mboards/0/";
 
   const std::string fpgaVersion = tree->access<std::string>(path / "fpga_version").get();
-  strncpy(packet.userDefined[2], fpgaVersion.c_str(), sizeof(packet.userDefined[2]));
-  std::cout << "FPGA Version: " << packet.userDefined[2] << std::endl;
+  strncpy(packet.fpgaVersion, fpgaVersion.c_str(), sizeof(packet.fpgaVersion) - 1);
+  std::cout << "FPGA Version: " << packet.fpgaVersion << std::endl;
 
   const std::string fwVersion = tree->access<std::string>(path / "fw_version").get();
-  strncpy(packet.userDefined[3], fwVersion.c_str(), sizeof(packet.userDefined[3]));
-  std::cout << "FW Version: " << packet.userDefined[3] << std::endl;
-
+  strncpy(packet.fwVersion, fwVersion.c_str(), sizeof(packet.fwVersion) - 1);
+  std::cout << "FW Version: " << packet.fwVersion << std::endl;
 
   // Lock mboard clocks
   usrp->set_clock_source(ref);
@@ -126,10 +125,10 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
   const std::uint64_t requested_num_samples = dwellDuration*receivedSampleRate + FILTER_DELAY;
 
   // setup streaming
-  uhd::stream_cmd_t stream_cmd(uhd::stream_cmd_t::STREAM_MODE_NUM_SAMPS_AND_DONE);
+  uhd::stream_cmd_t stream_cmd(uhd::stream_cmd_t::STREAM_MODE_NUM_SAMPS_AND_DONE); // Give us the number of samples we want and then finish
 
   stream_cmd.num_samps  = requested_num_samples;
-  stream_cmd.stream_now = true;
+  stream_cmd.stream_now = true; // Get samples immediately
   stream_cmd.time_spec  = uhd::time_spec_t(0.0);
 
   // Specify the endianness of the recording
@@ -140,7 +139,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
   }
   else if constexpr (std::endian::native == std::endian::little)
   {
-    packet.endianness = 0x01010101;
+    packet.endianness = 0x02020202;
   }
   else
   {
@@ -155,6 +154,9 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
   packet.rxGain = rxGain;
   packet.bitWidth = 16; // signed 16-bit integer
 
+  // Precompute the filter delay in seconds
+  const std::double_t filterDelaySecs = FILTER_DELAY*1.0/packet.sampleRate;
+
   // Allocate the host buffer the device will be streaming to
 
   std::complex<std::int16_t>* iq = new std::complex<std::int16_t>[requested_num_samples];
@@ -166,11 +168,13 @@ int UHD_SAFE_MAIN(int argc, char *argv[])
   {
     meta.reset();
 
+    // Issue the command to get the samples we requested
     rx_stream->issue_stream_cmd(stream_cmd);
 
+    // Block until all of the samples are received
     packet.numSamples = rx_stream->recv(iq, requested_num_samples, meta, 100e-3);
     packet.numSamples -= FILTER_DELAY;
-    packet.sampleStartTime = meta.time_spec.get_real_secs() + FILTER_DELAY*1.0/packet.sampleRate;
+    packet.sampleStartTime = meta.time_spec.get_real_secs() + filterDelaySecs;
 
     std::cout << "Received " << packet.numSamples << std::endl;
 
