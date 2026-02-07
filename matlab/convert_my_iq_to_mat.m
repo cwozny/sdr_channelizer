@@ -106,7 +106,7 @@ for ii = 1:length(files)
 
     waitbar(ii/length(files),hWait,sprintf('%1.1f%% - %d/%d - Saving %s', 100*ii/length(files), ii, length(files), strrep(filename,'_','\_')));
 
-    save(fullfile(outdir,filename),'iq','fs','fc','dur','bw','gain','bitWidth','sampleStartTime','linkSpeed','fpgaVersion','fwVersion','-v7.3')
+    save(fullfile(outdir,filename),'iq','fs','fc','dur','bw','gain','bitWidth','sampleStartTime','linkSpeed','boardName','serialNo','fpgaVersion','fwVersion','-v7.3')
 
     clear iq
     clear fs
