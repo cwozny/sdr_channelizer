@@ -68,7 +68,7 @@ for ii = 1:length(files)
     fs = fread(fid,1,'uint32=>float64');
     gain = fread(fid,1,'uint32=>float64');
     numSamples = fread(fid,1,'uint32=>float64');
-    bitWidth = fread(fid,1,'uint32=>uint32');
+    bitWidth = fread(fid,1,'uint32=>float64');
 
     if fileFormat == 2
         spare0 = fread(fid,1,'uint32=>float64');
