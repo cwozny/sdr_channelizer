@@ -17,7 +17,7 @@ files = string([]);
 idx = 1;
 
 for ii = 1:length(listing)
-    if contains(listing(ii).name,'.iq')
+    if endsWith(listing(ii).name,'.iq')
         files(idx) = listing(ii).name;
         idx = idx + 1;
     end
