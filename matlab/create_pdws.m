@@ -4,7 +4,7 @@ clc
 
 fprintf('%s - Clearing everything out\n', datetime)
 
-clear all
+clearvars
 close all
 
 %% Load data
@@ -13,14 +13,15 @@ listing = dir(uigetdir('./'));
 
 %% Initialize data
 
-pdw.toa = [];
-pdw.freq = [];
-pdw.snr = [];
-pdw.pw = [];
-pdw.sat = [];
-
 for ii = 1:length(listing)
     if contains(listing(ii).name,'.mat')
+
+        pdw.toa = [];
+        pdw.freq = [];
+        pdw.pw = [];
+        pdw.mag = [];
+        pdw.snr = [];
+        pdw.sat = [];
 
         fprintf('%s - Loading %s\n', datetime, listing(ii).name)
 
@@ -41,8 +42,9 @@ for ii = 1:length(listing)
         % I used median here instead of average because it is a "resistant
         % statistic".
         NOISE_FLOOR = median(mag);
-        SNR_THRESHOLD = 12 % dB
+        SNR_THRESHOLD = 18 % dB
         PULSE_THRESHOLD = NOISE_FLOOR*10^(SNR_THRESHOLD/10)
+        TRAILING_EDGE_THRESHOLD = NOISE_FLOOR*10^(3/10)
 
         fprintf('%s - Generating PDWs\n', datetime)
 
@@ -58,18 +60,18 @@ for ii = 1:length(listing)
                     saturated = false; % initialize whether the pulse was ever saturated
                 end
             else % Look for a trailing edge now that pulse is active
-                if mag(jj) <= PULSE_THRESHOLD % Declare a trailing edge
+                if mag(jj) <= TRAILING_EDGE_THRESHOLD % Declare a trailing edge
                     pulseActive = false; % the pulse is no longer active
 
                     % compute the UTC time of the time of arrival of the pulse
                     thisToa = ((toa/fs)+sampleStartTime);
 
-                    % compute the amplitude as the median magnitude over the entire pulse
-                    thisAmp = median(mag(toa:jj));
+                    % compute the magnitude as the median magnitude over the entire pulse
+                    thisMag = median(mag(toa:jj));
 
                     % compute the SNR for this pulse given the
                     % amplitude and noise floor for this channelizer bin
-                    thisSnr = 10*log10(thisAmp/NOISE_FLOOR);
+                    thisSnr = 10*log10(thisMag/NOISE_FLOOR);
 
                     % compute the pulse width as the number of samples
                     % this pulse was active for divided by the sampling
@@ -91,6 +93,7 @@ for ii = 1:length(listing)
                     pdw.toa = [pdw.toa; thisToa];
                     pdw.freq = [pdw.freq; thisFreq];
                     pdw.pw = [pdw.pw; thisPw];
+                    pdw.mag = [pdw.mag; thisMag];
                     pdw.snr = [pdw.snr; thisSnr];
                     pdw.sat = [pdw.sat; saturated];
                 else % Otherwise we're still measuring a pulse
