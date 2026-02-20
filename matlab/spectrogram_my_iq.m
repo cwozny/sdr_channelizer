@@ -35,6 +35,9 @@ for ii = 1:length(listing)
             case 0x02020202
                 fprintf('%s - Reading in little endian file\n', datetime)
                 fileFormat = 2;
+            case 0x03030303
+                fprintf('%s - Reading in little endian file\n', datetime)
+                fileFormat = 3;
             otherwise
                 error('%s - Unsupported endianness (0x%X)\n', datetime, endianness)
         end
@@ -46,17 +49,23 @@ for ii = 1:length(listing)
         if fileFormat == 1
             warning('File format 1 doesn''t interpret frequencies above 2^32 Hz correctly');
             fc = fread(fid,1,'uint32=>float64');
-        elseif fileFormat == 2
+        elseif fileFormat >= 2
             fc = fread(fid,1,'uint64=>float64');
         end
 
         bw = fread(fid,1,'uint32=>float64');
         fs = fread(fid,1,'uint32=>float64');
-        gain = fread(fid,1,'uint32=>float64');
-        numSamples = fread(fid,1,'uint32=>float64');
-        bitWidth = fread(fid,1,'uint32=>uint32');
 
-        if fileFormat == 2
+        if fileFormat >= 3
+            gain = fread(fid,1,'float32=>float64');
+        else
+            gain = fread(fid,1,'uint32=>float64');
+        end
+
+        numSamples = fread(fid,1,'uint32=>float64');
+        bitWidth = fread(fid,1,'uint32=>float64');
+
+        if fileFormat >= 2
             spare0 = fread(fid,1,'uint32=>float64');
         end
 
@@ -93,7 +102,7 @@ for ii = 1:length(listing)
     end
 
     if loaded
-        maxVal = double(2^(bitWidth-1));
+        maxVal = 2^(bitWidth-1);
         iq = double(iq);
         iq = iq/maxVal;
         iq = iq(1,:) + 1j*iq(2,:);
