@@ -256,12 +256,12 @@ int main(const int argc, const char *argv[])
 
   packet.frequencyHz = receivedFrequencyHz;
   packet.bandwidthHz = receivedBandwidthHz;
-  packet.sampleRate = receivedSampleRate;
-  packet.rxGain = rxGain;
+  packet.sampleRateSps = receivedSampleRate;
+  packet.rxGainDb = rxGain;
   packet.bitWidth = 8; // signed 8-bit integer
 
   // Precompute the filter delay in seconds
-  const std::double_t filterDelaySecs = FILTER_DELAY*1.0/packet.sampleRate;
+  const std::double_t filterDelaySecs = FILTER_DELAY*1.0/packet.sampleRateSps;
 
   // Allocate the host buffer the device will be streaming to
 
@@ -291,7 +291,7 @@ int main(const int argc, const char *argv[])
 
     currentTime = std::chrono::system_clock::now();
 
-    const std::double_t relativeSampleTimeSecs = (meta.timestamp - startTimeTicks) * 1.0 / packet.sampleRate;
+    const std::double_t relativeSampleTimeSecs = (meta.timestamp - startTimeTicks) * 1.0 / packet.sampleRateSps;
 
     packet.sampleStartTime = startTimeSecs + relativeSampleTimeSecs + filterDelaySecs;
 
